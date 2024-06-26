@@ -8,3 +8,6 @@ data/Brain Cancer/*
 
 .idea/
 .idea/*
+
+
+data/brain_cancer_dataset.pt
