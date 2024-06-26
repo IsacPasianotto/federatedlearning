@@ -1,0 +1,10 @@
+
+# data/
+# data/*
+# !data/.gitkeep
+
+data/Brain Cancer/
+data/Brain Cancer/*
+
+.idea/
+.idea/*
