@@ -11,3 +11,5 @@ data/Brain Cancer/*
 
 
 data/brain_cancer_dataset.pt
+data/brain_cancer_dataset_small.pt
+
