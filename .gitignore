@@ -6,6 +6,10 @@
 data/Brain Cancer/
 data/Brain Cancer/*
 
+data/MNIST/
+data/MNIST/*
+
+
 .idea/
 .idea/*
 
