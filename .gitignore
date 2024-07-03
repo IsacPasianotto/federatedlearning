@@ -21,3 +21,10 @@ data/brain_cancer/brain_cancer_dataset_small.pt
 .ipynb_checkpoints/
 .ipynb_checkpoints/*
 
+
+BrainCancer.zip
+data/BrainCancerDataset.pt
+data/BrainCancerDotMat/
+data/BrainCancerRawData/
+data/BrainCancerDotMat/*
+data/BrainCancerRawData/*
