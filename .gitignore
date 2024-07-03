@@ -3,8 +3,8 @@
 # data/*
 # !data/.gitkeep
 
-data/Brain Cancer/
-data/Brain Cancer/*
+data/brain_cancer/Brain Cancer/
+data/leukemia/Original/
 
 data/MNIST/
 data/MNIST/*
@@ -14,8 +14,8 @@ data/MNIST/*
 .idea/*
 
 
-data/brain_cancer_dataset.pt
-data/brain_cancer_dataset_small.pt
+data/brain_cancer/brain_cancer_dataset.pt
+data/brain_cancer/brain_cancer_dataset_small.pt
 
 # All jupyter checkpoints
 .ipynb_checkpoints/
