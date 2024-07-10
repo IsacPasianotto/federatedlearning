@@ -10,6 +10,8 @@ data/leukemia/Original/
 data/MNIST/
 data/MNIST/*
 
+dataBrain/
+
 
 .idea/
 .idea/*
