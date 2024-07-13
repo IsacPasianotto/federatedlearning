@@ -80,218 +80,241 @@ class BrainClassifier(nn.Module):
 
         return x
 
-def aggregate_weights(state_dicts, lens):
+
+###############################
+##   Train-test functions    ##
+###############################
+
+def train(rank, model, train_data, val_data, return_dict, nEpochs, lr=0.001, weight_decay=1e-4):
+    """ Train the model on the given dataset
+
+    Args:
+        rank (int): The rank of the GPU to be used
+        model (nn.Module): The model to be trained
+        train_data (torch Dataloader): The training data
+        val_data (torch Dataloader): The validation data
+        return_dict (Manager.dict): The dictionary to store the results
+        nEpochs (int): The number of epochs to train for
+        lr (float, optional): The learning rate to use for optimization. Defaults to 0.001.
+        weight_decay (float, optional): The weight decay to use for optimization. Defaults to 1e-4.
     """
-    Aggregate the weights of multiple models into a single model
-    performing a weighted average of the weights
-    The weighted is based on the size of each dataset
-    :param state_dicts: state_dicts of the models
-    :param lens: size of the datasets used to train each model
-    :return:
-    """
-    total = sum(lens)
-    weights = [len_ / total for len_ in lens]
-
-    # Need to move to host all the weights because they are on different GPUs
-    for i in range(len(state_dicts)):
-        state_dicts[i] = {k: v.cpu() for k, v in state_dicts[i].items()}
-
-
-    #aggregate the weights
-    new_state_dict = {}
-    for k in state_dicts[0].keys():
-        new_state_dict[k] = sum([weights[i] * state_dicts[i][k] for i in range(len(state_dicts))])
-    return new_state_dict
-
-
-
-##########################################
-##         Define the training          ##
-##########################################
-def train(rank, model, dataset, return_dict):
-    torch.cuda.set_device(rank)
     device = torch.device(f"cuda:{rank}")
+    torch.cuda.set_device(device)
+    print("Training on", device)
     model = model.to(device)
-
-    train_loader, val_loader = dataset
-
+    
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-4)
-
-    train_losses = []
-    val_losses = []
-
+    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    
     # Create CUDA events for timing
     start = torch.cuda.Event(enable_timing=True)
     end = torch.cuda.Event(enable_timing=True)
-
-    for epoch in range(5):  # 5 epochs just to test
+    
+    train_losses = []
+    val_losses = []
+    for epoch in range(nEpochs):
         model.train()
-        epoch_loss = 0
         start.record()
-        for images, labels in train_loader:
-            images, labels = images.to(device, non_blocking=True), labels.to(device, non_blocking=True)
-            optimizer.zero_grad()
-            outputs = model(images)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
-            epoch_loss += loss.item()
+        epoch_loss = step(model, device, train_data, criterion, optimizer)
         end.record()
-
         # Waits for everything to finish running
         torch.cuda.synchronize()
-
-        train_losses.append(epoch_loss / len(train_loader))
+        train_losses.append(epoch_loss / len(train_data))
 
         model.eval()
-        val_loss = 0
         with torch.no_grad():
-            for images, labels in val_loader:
-                images, labels = images.to(device, non_blocking=True), labels.to(device, non_blocking=True)
-                outputs = model(images)
-                loss = criterion(outputs, labels)
-                val_loss += loss.item()
-        val_losses.append(val_loss / len(val_loader))
-
-        print(
-            f"GPU {rank}, Epoch {epoch + 1}: Train Loss: {train_losses[-1]:.4f}, Val Loss: {val_losses[-1]:.4f}, Time: {start.elapsed_time(end):.2f}ms")
+            val_loss = step(model, device, val_data, criterion)
+        # torch.cuda.synchronize() # needed?
+        val_losses.append(val_loss / len(val_data))
+        print(f"GPU {rank}, Epoch {epoch + 1}: Train Loss: {train_losses[-1]:.4f}, Val Loss: {val_losses[-1]:.4f}, Time: {start.elapsed_time(end):.2f}ms")
 
     return_dict[rank] = {
         'train_losses': train_losses,
         'val_losses': val_losses,
         'state_dict': {k: v.cpu() for k, v in model.state_dict().items()}  # Move to CPU
     }
+    
+    
+def test(i, model, data, toPrint):
+    """ Test the given model on the given data using the given device
 
-def main():
-    mp.set_start_method('spawn')
+    Args:
+        i (int): device number
+        model (nn.Module): the model to evaluate
+        data (torch Dataloader): the data to use to evaluate the model
+    """
+    device = torch.device(f"cuda:{i}")
+    model.to(device).eval()
+    correct = 0
+    total = 0
+    with torch.no_grad():
+        for image, label in data:
+            image, label = image.to(device), label.to(device)
+            outputs = model(image)
+            correct += (outputs.argmax(1) == label).sum().item()
+            total += label.size(0)
+        accuracy = 100 * correct / total
+    print(toPrint + f'{accuracy:.2f}%')
 
-    if torch.cuda.is_available():
-        device_count = torch.cuda.device_count()
-        print(f"Found {device_count} CUDA device(s)")
-        if device_count < 2:
-            print("Warning: This script is designed to use 2 GPUs, but fewer were found.")
-            return
-    else:
-        print("No CUDA devices found. This script requires GPU support.")
-        return
 
-    # Load datasets
-    data1 = torch.load('data/BrainCancerDataset.pt')
-    data2 = torch.load('data/BrainCancerDataset.pt')
-    # ...
-    data_agg = torch.load('data/BrainCancerDataset.pt')
+def step(model, device, data, criterion, optimizer=None):
+    """ Perform a single training or evaluation step
 
-    data1_train, data1_val, data1_test = data1.train_val_test_split()
-    data2_train, data2_val, data2_test = data2.train_val_test_split()
-    #...
+    Args:
+        model (nn.Module): The model to be trained
+        device (torch.device): The device to be used
+        data (DataLoader): The data to be used
+        criterion (nn.Module): The loss function to be used
+        optimizer (optim.Optimizer, optional): The optimizer to be used if training. Defaults to None (evaluation step).
+
+    Returns:
+        float: The total loss for the step
+    """
+    total_loss = 0
+    for image, label in data:
+        image, label = image.to(device, non_blocking=True), label.to(device, non_blocking=True)
+        outputs = model(image)
+        loss = criterion(outputs, label)
+        if optimizer is not None:
+            optimizer.zero_grad(set_to_none=True)
+            loss.backward()
+            optimizer.step()
+        total_loss += loss.item()
+    return total_loss
+
+###############################
+##      Other functions      ##
+###############################
+
+def build_Dataloader(data, batch_size): 
+    """ Build a DataLoader object for the given data
+
+    Args:
+        data (torch Subset): The data to be loaded
+        batch_size (int): The batch size to be used
+
+    Returns:
+        DataLoader: The DataLoader object
+    """
+    return DataLoader(data, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
+ 
+ 
+def aggregate_weights(state_dicts, trainSizes):
+    """ Aggregate the weights of multiple models into a single model performing a weighted average of the weights.
+    The weighted is based on the size of each dataset
+    
+    Args:
+        state_dicts (List[dict]): state_dicts of the models
+        trainSizes (List[int]): size of the datasets used to train each model
+    
+    Returns:
+        Dict: the dictionary with the weighted sum of the weights
+    """
+    total = sum(trainSizes)
+    weights = (torch.tensor(trainSizes, dtype=torch.float) / total) # weights for each dataset, based on the size of the dataset, reshaped to be broadcastable
+    #aggregate the weights
+    new_state_dict = {}
+    for k in state_dicts[0].keys():  # keys are the names the network nodes weights, biases, etc --> they are the same for all the networks since they are all identical
+        stacked_tensors = torch.stack([state_dict[k] for state_dict in state_dicts])
+        new_state_dict[k] = (stacked_tensors * weights.view(-1, *([1] * (stacked_tensors.dim() - 1)))).sum(dim=0)
+        # explanation of the line above:
+        # [1] * (stacked_tensors.dim() - 1) creates a list of 1s with the same length as the dimensions of the stacked_tensors minus 1
+        # -1 is used to keep the dimensions of the weights tensor the same as the stacked_tensors tensor, with the first dimension inferred from the weights tensor
+        # the weights tensor is reshaped to be broadcastable to the stacked_tensors tensor
+        # note that state_dict[k] could be a bias or a weight, which have different dimensions
+    return new_state_dict
+   
+    
+def evalAggregate(data, results, trainSizes, batch_size):
+    """ Evaluate the aggregated model on the test set
+
+    Args:
+        data (String): the file where to load data from
+        results (List[Dict]): The results of the training process for each device
+        trainSizes (List[int]): The sizes of the training datasets for each device
+        batch_size (int): The batch size to be used
+    """
+    # Aggregate the weights of the two models to see the federated model
+    federated_model = BrainClassifier()
+    federated_weights = aggregate_weights([results[i]['state_dict'] for i in range(len(results))], trainSizes)
+    federated_model.load_state_dict(federated_weights)
+
+    data_agg = torch.load(data)
     data_agg_train, data_agg_val, data_agg_test = data_agg.train_val_test_split()
+    # train_loader_agg = build_Dataloader(data_agg_train, batch_size)
+    # val_loader_agg   = build_Dataloader(data_agg_val, batch_size)
+    test_loader_agg    = build_Dataloader(data_agg_test, batch_size)
+    test(0, federated_model, test_loader_agg, f'Accuracy of {len(results)} aggregated models on test set: ')
+        
+def exec_procs(train_procs):
+    """ Execute all the given processes in parallel
 
-    sizes = [len(data1_train), len(data2_train)]
-
-    # create the data loaders
-    train_loader1 = DataLoader(data1_train, batch_size=64, shuffle=True, num_workers=4, pin_memory=True)
-    val_loader1 = DataLoader(data1_val, batch_size=64, num_workers=4, pin_memory=True)
-    test_loader1 = DataLoader(data1_test, batch_size=64, num_workers=4, pin_memory=True)
-
-    train_loader2 = DataLoader(data2_train, batch_size=64, shuffle=True, num_workers=4, pin_memory=True)
-    val_loader2 = DataLoader(data2_val, batch_size=64, num_workers=4, pin_memory=True)
-    test_loader2 = DataLoader(data2_test, batch_size=64, num_workers=4, pin_memory=True)
-
-    # ....
-
-    # train_loader_agg = DataLoader(data_agg_train, batch_size=64, shuffle=True, num_workers=4, pin_memory=True)
-    # val_loader_agg = DataLoader(data_agg_val, batch_size=64, num_workers=4, pin_memory=True)
-    test_loader_agg = DataLoader(data_agg_test, batch_size=64, num_workers=4, pin_memory=True)
-
-    datasets = [(train_loader1, val_loader1), (train_loader2, val_loader2)]
-
-    manager = mp.Manager()
-    return_dict = manager.dict()
-
-    model1 = BrainClassifier()
-    model2 = BrainClassifier()
-
-    p1 = mp.Process(target=train, args=(0, model1, datasets[0], return_dict))
-    p2 = mp.Process(target=train, args=(1, model2, datasets[1], return_dict))
-
+    Args:
+        train_procs (List[mp.Process]): the processes to execute
+    """
     try:
-        p1.start()
-        p2.start()
-
-        p1.join()
-        p2.join()
-
-        # Collect results from all processe
-        results = [return_dict[i] for i in range(2)]
-
-        # Create two final models with the trained weights
-        final_model1 = BrainClassifier()
-        final_model1.load_state_dict(results[0]['state_dict'])
-
-        final_model2 = BrainClassifier()
-        final_model2.load_state_dict(results[1]['state_dict'])
-
-        # Evaluate both models on their respective test sets
-        for i, (final_model, test_loader) in enumerate([(final_model1, test_loader1), (final_model2, test_loader2)]):
-            device = torch.device(f"cuda:{i}")
-            final_model.to(device)
-            final_model.eval()
-
-            correct = 0
-            total = 0
-            with torch.no_grad():
-                for images, labels in test_loader:
-                    images, labels = images.to(device), labels.to(device)
-                    outputs = final_model(images)
-                    _, predicted = torch.max(outputs.data, 1)
-                    total += labels.size(0)
-                    correct += (predicted == labels).sum().item()
-
-            accuracy = 100 * correct / total
-            print(f'Accuracy of the final model {i + 1} on its test set: {accuracy:.2f}%')
-
-        # Aggregate the weights of the two models to see the federated model
-        federated_model = BrainClassifier()
-        # bring all the weights to the host and aggregate them
-        model1.load_state_dict({k: v.cpu() for k, v in model1.state_dict().items()})
-        model2.load_state_dict({k: v.cpu() for k, v in model2.state_dict().items()})
-        model1.to('cpu')
-        model2.to('cpu')
-
-
-        federated_weights = aggregate_weights([results[i]['state_dict'] for i in range(2)], sizes)
-        federated_model.load_state_dict(federated_weights)
-
-        # Evaluate the federated model on the test sets
-        # use the first GPU for evaluation
-        device = torch.device("cuda:0")
-        print(f"Testing the federated model on GPU {device}")
-        federated_model.to(device)
-        federated_model.eval()
-
-        correct = 0
-        total = 0
-        with torch.no_grad():
-            for images, labels in test_loader_agg:
-                images, labels = images.to(device), labels.to(device)
-                outputs = federated_model(images)
-                _, predicted = torch.max(outputs.data, 1)
-                total += labels.size(0)
-                correct += (predicted == labels).sum().item()
-
-            accuracy = 100 * correct / total
-            print(f'Accuracy of the aggregated model {i + 1} on its test set: {accuracy:.2f}%')
-
-
+        for p in train_procs:
+            p.start()
+        for p in train_procs:
+            p.join()
     # Ensure processes are terminated if something goes wrong
     except Exception as e:
         print(f"An error occurred: {e}")
         # Ensure processes are terminated
-        p1.terminate()
-        p2.terminate()
-        p1.join()
-        p2.join()
+        for p in train_procs:
+            p.terminate()
+            p.join()
+    
+#############################################################################    
+#############################################################################
+#############################################################################
+#############################################################################
+
+def main():
+    mp.set_start_method('spawn')
+    if torch.cuda.is_available():
+        nDevices = torch.cuda.device_count()
+        print(f"Found {nDevices} CUDA device(s)")
+    else:
+        print("No CUDA devices found. This script requires GPU support. Aborting")
+        return
+    
+    # parameters:
+    batch_size = 64    
+    nEpochs = 5
+    lr = 0.001
+    weight_decay = 1e-4
+    dataFiles = ['BrainCancerDataset.pt'] * nDevices # To be changed to have different data for each device!
+    agg_file = 'data/BrainCancerDataset.pt'
+    
+    # Load datasets
+    data = [torch.load('data/' + filename) for filename in dataFiles]
+    train_data, val_data, test_data = zip(*[data[i].train_val_test_split() for i in range(nDevices)])
+    train_loaders = [build_Dataloader(d, batch_size) for d in train_data]
+    val_loaders   = [build_Dataloader(d, batch_size) for d in val_data]
+    test_loaders  = [build_Dataloader(d, batch_size) for d in test_data]
+
+    return_dict = mp.Manager().dict()
+    exec_procs( [mp.Process(target = train, 
+                            args = (i, BrainClassifier(), train_loaders[i], val_loaders[i], return_dict, nEpochs, lr, weight_decay)
+                            ) for i in range(nDevices)] )
+    
+    # Collect results from all processe
+    results = [return_dict[i] for i in range(nDevices)]
+    # Create the final models with the trained weights
+    final_models = [BrainClassifier() for _ in range(nDevices)]
+    for model, result in zip(final_models, results):
+        model.load_state_dict(result['state_dict'])
+
+    # Evaluate all models on their respective test sets
+    exec_procs( [mp.Process(target = test,  
+                            args = (i, final_models[i], test_loaders[i], f'Accuracy of the final model {i + 1} on its test set: ')
+                            ) for i in range(nDevices)] )
+    
+    trainSizes = [len(train_data[i]) for i in range(nDevices)]
+    evalAggregate(agg_file, results, trainSizes, batch_size)
+    
+    
 
 if __name__ == '__main__':
     main()
