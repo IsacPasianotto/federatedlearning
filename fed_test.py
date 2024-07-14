@@ -1,11 +1,9 @@
 import os
-import torch
+import torch as th
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
-from torch.nn.parallel import DistributedDataParallel as DDP
-from torch.distributed import init_process_group, destroy_process_group
+from torch.utils.data import Dataset, DataLoader, Subset, random_split
 import torch.multiprocessing as mp
 
 
@@ -13,19 +11,29 @@ import torch.multiprocessing as mp
 ##       Define the dataset class       ##
 ##########################################
 
-class Dataset(torch.utils.data.Dataset):
-    def __init__(self, data):
-        self.images = data['images'].float()
-        self.labels = data['labels'].long()
+class Dataset(Dataset):
+    def __init__ (self, images=None, labels=None, files=None):
+        if files is not None:
+            self.images = th.FloatTensor()
+            self.labels = th.LongTensor()
+            self.importFromFiles(files)
+        elif images is not None and labels is not None:
+            self.images = images.float()
+            self.labels = labels.long()
+        else:
+            raise ValueError("Either images and labels or a list of files should be provided")
 
     def __len__(self):
         return len(self.images)
 
     def __getitem__(self, idx):
         return self.images[idx], self.labels[idx]
-
+    
+    def labelStr(self,label):
+            return "Meningioma" if label == 0 else "Glioma" if label == 1 else "Pituitary tumor" if label == 2 else "unknown"
+    
     def shuffle(self):
-        idx = torch.randperm(self.__len__())
+        idx = th.randperm(self.__len__())
         self.images = self.images[idx]
         self.labels = self.labels[idx]
 
@@ -34,8 +42,84 @@ class Dataset(torch.utils.data.Dataset):
         train_size = int(train_percentage * len(self))
         val_size = int(val_percentage * len(self))
         test_size = len(self) - train_size - val_size
-        return torch.utils.data.random_split(self, [train_size, val_size, test_size])
+        return random_split(self, [train_size, val_size, test_size])
 
+    def separateClasses(self):
+        nClasses = th.max(self.labels)+1
+        return [Subset(self, th.where(self.labels == i)[0]) for i in range(nClasses)]
+    
+    def splitClasses(self, percentPerClass, save=False):
+        """Split the dataset into multiple datasets, one for each class, and saves them if desired
+
+        Args:
+            percentPerClass (List[List[float]]): List of lists of floats representing the percentage of each class to be in each subset
+            save (bool, optional): Decide if to save the created datasets or not. Defaults to False.
+
+        Raises:
+            ValueError: raised if the number of percentages arrays is different from the number of classes
+            ValueError: raised if the sum of the percentages is not 1 for each class
+
+        Returns:
+            List[Dataset]: List of the created datasets
+        """
+        datasets = self.separateClasses()
+        nClasses = len(datasets)
+        if len(percentPerClass) != nClasses:
+            raise ValueError(f"The number of percentages arrays should be equal to the number of classes ({nClasses})")
+        for percentList in percentPerClass:
+            if not th.isclose(th.sum(percentList), th.tensor(1.0), atol=1e-6):
+                raise ValueError(f"The sum of the percentages of each class should be 1, but got {sum(percentList)} in {percentList}")
+        output = []
+        for i in range(nClasses):
+            dataS = []
+            dataset_size = len(datasets[i])
+            split_sizes = [int(p * dataset_size) for p in percentPerClass[i][:-1]]
+            split_sizes.append(dataset_size - sum(split_sizes))  # Add the remaining elements to the last subset
+            data = random_split(datasets[i], split_sizes)
+            for j, subset in enumerate(data):
+                # Extract data from the subset
+                images = [subset.dataset[idx][0] for idx in subset.indices]
+                labels = [subset.dataset[idx][1] for idx in subset.indices]
+                # Create a new dataset
+                newData = Dataset(th.stack(images), th.tensor(labels))
+                dataS.append(newData)
+                if save:
+                    label = self.labelStr(i)
+                    os.makedirs(f"dataBrain/{label}", exist_ok=True)
+                    # Save the new dataset
+                    th.save(newData, f"dataBrain/{label}/{label}{int(percentPerClass[i][j]*100)}_{j}.pt")
+            output.append(dataS)
+        return output
+    
+    def importFromFiles(self, files):
+        """ Import data from the given files (one for each class)
+
+        Args:
+            files (List[various]): List of files to import data from (either strings or Dataset objects)
+            
+        Raises:
+            ValueError: raised if the file does not exist, or if the file does not contain a Dataset object
+        """
+        imgs = []
+        labs = []
+        for file in files:
+            if isinstance(file, str):
+                if not os.path.isfile(file):
+                    raise ValueError(f"File {file} does not exist")
+                data = th.load(file)
+                if not isinstance(data, Dataset):
+                    raise ValueError(f"File {file} does not contain a Dataset object")
+            elif isinstance(file, Dataset):
+                data = file
+            else:
+                raise ValueError(f"Invalid file type: {type(file)}")
+            imgs.append(data.images)
+            labs.append(data.labels)
+        self.images = th.cat(imgs)
+        self.labels = th.cat(labs)
+        self.shuffle()
+            
+            
 
 ##########################################
 ##          Define the model            ##
@@ -91,15 +175,15 @@ def train(rank, model, train_data, val_data, return_dict, nEpochs, lr=0.001, wei
     Args:
         rank (int): The rank of the GPU to be used
         model (nn.Module): The model to be trained
-        train_data (torch Dataloader): The training data
-        val_data (torch Dataloader): The validation data
+        train_data (th Dataloader): The training data
+        val_data (th Dataloader): The validation data
         return_dict (Manager.dict): The dictionary to store the results
         nEpochs (int): The number of epochs to train for
         lr (float, optional): The learning rate to use for optimization. Defaults to 0.001.
         weight_decay (float, optional): The weight decay to use for optimization. Defaults to 1e-4.
     """
-    device = torch.device(f"cuda:{rank}")
-    torch.cuda.set_device(device)
+    device = th.device(f"cuda:{rank}")
+    th.cuda.set_device(device)
     print("Training on", device)
     model = model.to(device)
     
@@ -107,8 +191,8 @@ def train(rank, model, train_data, val_data, return_dict, nEpochs, lr=0.001, wei
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     
     # Create CUDA events for timing
-    start = torch.cuda.Event(enable_timing=True)
-    end = torch.cuda.Event(enable_timing=True)
+    start = th.cuda.Event(enable_timing=True)
+    end = th.cuda.Event(enable_timing=True)
     
     train_losses = []
     val_losses = []
@@ -118,13 +202,13 @@ def train(rank, model, train_data, val_data, return_dict, nEpochs, lr=0.001, wei
         epoch_loss = step(model, device, train_data, criterion, optimizer)
         end.record()
         # Waits for everything to finish running
-        torch.cuda.synchronize()
+        th.cuda.synchronize()
         train_losses.append(epoch_loss / len(train_data))
 
         model.eval()
-        with torch.no_grad():
+        with th.no_grad():
             val_loss = step(model, device, val_data, criterion)
-        # torch.cuda.synchronize() # needed?
+        # th.cuda.synchronize() # needed?
         val_losses.append(val_loss / len(val_data))
         print(f"GPU {rank}, Epoch {epoch + 1}: Train Loss: {train_losses[-1]:.4f}, Val Loss: {val_losses[-1]:.4f}, Time: {start.elapsed_time(end):.2f}ms")
 
@@ -141,13 +225,13 @@ def test(i, model, data, toPrint):
     Args:
         i (int): device number
         model (nn.Module): the model to evaluate
-        data (torch Dataloader): the data to use to evaluate the model
+        data (th Dataloader): the data to use to evaluate the model
     """
-    device = torch.device(f"cuda:{i}")
+    device = th.device(f"cuda:{i}")
     model.to(device).eval()
     correct = 0
     total = 0
-    with torch.no_grad():
+    with th.no_grad():
         for image, label in data:
             image, label = image.to(device), label.to(device)
             outputs = model(image)
@@ -162,7 +246,7 @@ def step(model, device, data, criterion, optimizer=None):
 
     Args:
         model (nn.Module): The model to be trained
-        device (torch.device): The device to be used
+        device (th.device): The device to be used
         data (DataLoader): The data to be used
         criterion (nn.Module): The loss function to be used
         optimizer (optim.Optimizer, optional): The optimizer to be used if training. Defaults to None (evaluation step).
@@ -190,7 +274,7 @@ def build_Dataloader(data, batch_size):
     """ Build a DataLoader object for the given data
 
     Args:
-        data (torch Subset): The data to be loaded
+        data (th Subset): The data to be loaded
         batch_size (int): The batch size to be used
 
     Returns:
@@ -211,11 +295,11 @@ def aggregate_weights(state_dicts, trainSizes):
         Dict: the dictionary with the weighted sum of the weights
     """
     total = sum(trainSizes)
-    weights = (torch.tensor(trainSizes, dtype=torch.float) / total) # weights for each dataset, based on the size of the dataset, reshaped to be broadcastable
+    weights = (th.tensor(trainSizes, dtype=th.float) / total) # weights for each dataset, based on the size of the dataset, reshaped to be broadcastable
     #aggregate the weights
     new_state_dict = {}
     for k in state_dicts[0].keys():  # keys are the names the network nodes weights, biases, etc --> they are the same for all the networks since they are all identical
-        stacked_tensors = torch.stack([state_dict[k] for state_dict in state_dicts])
+        stacked_tensors = th.stack([state_dict[k] for state_dict in state_dicts])
         new_state_dict[k] = (stacked_tensors * weights.view(-1, *([1] * (stacked_tensors.dim() - 1)))).sum(dim=0)
         # explanation of the line above:
         # [1] * (stacked_tensors.dim() - 1) creates a list of 1s with the same length as the dimensions of the stacked_tensors minus 1
@@ -239,7 +323,7 @@ def evalAggregate(data, results, trainSizes, batch_size):
     federated_weights = aggregate_weights([results[i]['state_dict'] for i in range(len(results))], trainSizes)
     federated_model.load_state_dict(federated_weights)
 
-    data_agg = torch.load(data)
+    data_agg = th.load(data)
     data_agg_train, data_agg_val, data_agg_test = data_agg.train_val_test_split()
     # train_loader_agg = build_Dataloader(data_agg_train, batch_size)
     # val_loader_agg   = build_Dataloader(data_agg_val, batch_size)
@@ -272,23 +356,39 @@ def exec_procs(train_procs):
 
 def main():
     mp.set_start_method('spawn')
-    if torch.cuda.is_available():
-        nDevices = torch.cuda.device_count()
+    if th.cuda.is_available():
+        nDevices = th.cuda.device_count()
         print(f"Found {nDevices} CUDA device(s)")
     else:
-        print("No CUDA devices found. This script requires GPU support. Aborting")
-        return
+        raise RuntimeError("No CUDA devices found. This script requires GPU support. Aborting")
     
     # parameters:
     batch_size = 64    
     nEpochs = 5
     lr = 0.001
+    importData = False
     weight_decay = 1e-4
-    dataFiles = ['BrainCancerDataset.pt'] * nDevices # To be changed to have different data for each device!
-    agg_file = 'data/BrainCancerDataset.pt'
+    agg_file = 'data/BrainCancerDataset.pt' # which file should we use for the aggregation evaluation?
     
+    if importData:
+        basePath = 'dataBrain/'
+        # datasets must have shape (nDevices, nClasses), parameters and the way filenames are passed can be changed later
+        datasets = [ [basePath+'Meningioma/Meningioma60_0.pt', basePath+'Glioma/Glioma60_0.pt', basePath+'Pituitary tumor/Pituitary tumor60_0.pt'],
+                     [basePath+'Meningioma/Meningioma30_1.pt', basePath+'Glioma/Glioma30_1.pt', basePath+'Pituitary tumor/Pituitary tumor30_1.pt'],
+                     [basePath+'Meningioma/Meningioma10_2.pt', basePath+'Glioma/Glioma10_2.pt', basePath+'Pituitary tumor/Pituitary tumor10_2.pt'] ]
+        if len(datasets) != nDevices:
+            raise ValueError(f"Number of data files ({len(datasets)}) does not match the number of devices ({nDevices})")
+        data = [Dataset(files=files) for files in datasets]     
+    else:
+        allData = th.load('data/BrainCancerDataset.pt')
+        #perc must have shape (nClasses, nDevices) and sum to 1 for each class
+        perc = [th.tensor([0.4, 0.3, 0.2, 0.1]),  # Meningioma
+                th.tensor([0.3, 0.1, 0.4, 0.2]),  # Glioma
+                th.tensor([0.2, 0.4, 0.1, 0.3]) ] # Pituitary tumor
+        datasets = allData.splitClasses(perc)
+        data = [Dataset(files=[dataset[i] for dataset in datasets]) for i in range(nDevices)]
+
     # Load datasets
-    data = [torch.load('data/' + filename) for filename in dataFiles]
     train_data, val_data, test_data = zip(*[data[i].train_val_test_split() for i in range(nDevices)])
     train_loaders = [build_Dataloader(d, batch_size) for d in train_data]
     val_loaders   = [build_Dataloader(d, batch_size) for d in val_data]
@@ -317,4 +417,7 @@ def main():
     
 
 if __name__ == '__main__':
+    model = BrainClassifier()
+    total_params = sum(p.numel() for p in model.parameters())
+    print(f"Number of parameters: {total_params}")
     main()
