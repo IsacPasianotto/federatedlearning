@@ -45,14 +45,12 @@ def train(rank, model, train_data, val_data, return_dict, nEpochs, lr=0.001, wei
         start.record()
         epoch_loss = step(model, device, train_data, criterion, optimizer)
         end.record()
-        # Waits for everything to finish running
-        th.cuda.synchronize()
+
         train_losses.append(epoch_loss / len(train_data))
 
         model.eval()
         with th.no_grad():
             val_loss = step(model, device, val_data, criterion)
-        # th.cuda.synchronize() # needed?
         val_losses.append(val_loss / len(val_data))
         print(f"GPU {rank}, Epoch {epoch + 1}: Train Loss: {train_losses[-1]:.4f}, Val Loss: {val_losses[-1]:.4f}, Time: {start.elapsed_time(end):.2f}ms")
 
@@ -82,6 +80,10 @@ def test(i, model, data, toPrint):
             total += label.size(0)
         accuracy = 100 * correct / total
     print(toPrint + f'{accuracy:.2f}%')
+    # free up everything
+    # th.cuda.synchronize()  # maybe not needed --> todo check better
+    th.cuda.empty_cache()
+    
 
 
 def step(model, device, data, criterion, optimizer=None):

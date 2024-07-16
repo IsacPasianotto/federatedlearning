@@ -29,6 +29,7 @@ def exec_procs(train_procs):
             p.start()
         for p in train_procs:
             p.join()
+            print("procs_join")
     # Ensure processes are terminated if something goes wrong
     except Exception as e:
         print(f"An error occurred: {e}")
@@ -76,7 +77,8 @@ def main():
     exec_procs( [mp.Process(target = train,
                             args = (i, networks.BrainClassifier(), train_loaders[i], val_loaders[i], return_dict, nEpochs, lr, weight_decay)
                             ) for i in range(nDevices)] )
-
+    # Once all center has trained theyr own network, aggregate the results
+    th.cuda.synchronize()  # be sure that everyone has finish his duty before starting the aggregation
     # Collect results from all processes
     results = [return_dict[i] for i in range(nDevices)]
     # Create the final models with the trained weights
