@@ -36,3 +36,5 @@ Brain_weights.pth
 Leukemia_weights.pth
 data/leukemia/leukemia_small_dataset.pt
 data/leukemia/leukemia_dataset.pt
+
+**/__pycache__/

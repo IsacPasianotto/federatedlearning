@@ -4,6 +4,7 @@
 
 import os
 import torch as th
+import numpy as np
 from torch.utils.data import Dataset, DataLoader, Subset, random_split
 
 
@@ -49,7 +50,7 @@ class Dataset(Dataset):
         return [Subset(self, th.where(self.labels == i)[0]) for i in range(nClasses)]
 
     def splitClasses(self, percentPerClass, save=False):
-        """Split the dataset into multiple datasets, one for each class, and saves them if desired
+        """Split the dataset into multiple datasets, one for each class and center, and saves them if desired
 
         Args:
             percentPerClass (List[List[float]]): List of lists of floats representing the percentage of each class to be in each subset
@@ -60,36 +61,34 @@ class Dataset(Dataset):
             ValueError: raised if the sum of the percentages is not 1 for each class
 
         Returns:
-            List[Dataset]: List of the created datasets
+            List[List[Dataset]]: List of the created datasets, one for each class and center
         """
         datasets = self.separateClasses()
         nClasses = len(datasets)
         if len(percentPerClass) != nClasses:
             raise ValueError(f"The number of percentages arrays should be equal to the number of classes ({nClasses})")
         for percentList in percentPerClass:
-            if not th.isclose(th.sum(percentList), th.tensor(1.0), atol=1e-6):
+            if not np.isclose(np.sum(percentList), 1.0, atol=1e-6):
                 raise ValueError(f"The sum of the percentages of each class should be 1, but got {sum(percentList)} in {percentList}")
-        output = []
+        output = np.empty((nClasses, len(percentPerClass[0])), dtype=object)
         for i in range(nClasses):
-            dataS = []
             dataset_size = len(datasets[i])
             split_sizes = [int(p * dataset_size) for p in percentPerClass[i][:-1]]
             split_sizes.append(dataset_size - sum(split_sizes))  # Add the remaining elements to the last subset
             data = random_split(datasets[i], split_sizes)
             for j, subset in enumerate(data):
                 # Extract data from the subset
-                images = [subset.dataset[idx][0] for idx in subset.indices]
-                labels = [subset.dataset[idx][1] for idx in subset.indices]
+                images = th.stack([subset.dataset[idx][0] for idx in subset.indices])
+                labels = th.tensor([subset.dataset[idx][1] for idx in subset.indices])
                 # Create a new dataset
-                newData = Dataset(th.stack(images), th.tensor(labels))
-                dataS.append(newData)
+                newData = Dataset(images, labels)
+                output[i,j] = newData
                 if save:
                     label = self.labelStr(i)
                     os.makedirs(f"dataBrain/{label}", exist_ok=True)
                     # Save the new dataset
                     th.save(newData, f"dataBrain/{label}/{label}{int(percentPerClass[i][j]*100)}_{j}.pt")
-            output.append(dataS)
-        return output
+        return output.T
 
     def importFromFiles(self, files):
         """ Import data from the given files (one for each class)

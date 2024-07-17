@@ -3,5 +3,5 @@
 
   - [ ] Main loop per il federated learinng
   - [x] Lista di modeli
-  - [ ] Non fixxare il numero di modelli in base alle GPU
+  - [x] Non fixxare il numero di modelli in base alle GPU
   - [ ] MPI tra nodi diversi

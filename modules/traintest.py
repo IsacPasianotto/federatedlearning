@@ -7,30 +7,31 @@ import torch as th
 import torch.nn as nn
 import torch.optim as optim
 
+from settings import printv, printd
 
 
 ####
 ## Defined functions
 ####
 
-def train(rank, model, train_data, val_data, return_dict, nEpochs, lr=0.001, weight_decay=1e-4):
+def train(rank, centerID, model, train_data, val_data, return_dict, nEpochs, lr=0.001, weight_decay=1e-4):
     """ Train the model on the given dataset
 
     Args:
         rank (int): The rank of the GPU to be used
+        centerID(int): The ID of the center
         model (nn.Module): The model to be trained
         train_data (th Dataloader): The training data
         val_data (th Dataloader): The validation data
-        return_dict (Manager.dict): The dictionary to store the results
+        return_dict (dict): The dictionary to store the results
         nEpochs (int): The number of epochs to train for
-        lr (float, optional): The learning rate to use for optimization. Defaults to 0.001.
+        lr (float, optional): The learning rate to use forprintv optimization. Defaults to 0.001.
         weight_decay (float, optional): The weight decay to use for optimization. Defaults to 1e-4.
     """
     device = th.device(f"cuda:{rank}")
     th.cuda.set_device(device)
-    print("Training on", device)
+    printd("Training on", device, " for ",centerID, " with ", len(train_data), len(train_data.dataset), " and ", len(val_data), len(val_data.dataset))
     model = model.to(device)
-
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
 
@@ -52,23 +53,23 @@ def train(rank, model, train_data, val_data, return_dict, nEpochs, lr=0.001, wei
         with th.no_grad():
             val_loss = step(model, device, val_data, criterion)
         val_losses.append(val_loss / len(val_data))
-        print(f"GPU {rank}, Epoch {epoch + 1}: Train Loss: {train_losses[-1]:.4f}, Val Loss: {val_losses[-1]:.4f}, Time: {start.elapsed_time(end):.2f}ms")
+        printv(f"GPU {rank}, Epoch {epoch + 1}: Train Loss: {train_losses[-1]:.4f}, Val Loss: {val_losses[-1]:.4f}, Time: {start.elapsed_time(end):.2f}ms")
 
-    return_dict[rank] = {
+    return_dict[centerID] = {
         'train_losses': train_losses,
         'val_losses': val_losses,
         'state_dict': {k: v.cpu() for k, v in model.state_dict().items()}  # Move to CPU
     }
 
-def test(i, model, data, toPrint):
+def test(rank, model, data, toPrint):
     """ Test the given model on the given data using the given device
 
     Args:
-        i (int): device number
+        rank (int): The rank of the GPU to be used
         model (nn.Module): the model to evaluate
         data (th Dataloader): the data to use to evaluate the model
     """
-    device = th.device(f"cuda:{i}")
+    device = th.device(f"cuda:{rank}")
     model.to(device).eval()
     correct = 0
     total = 0
@@ -79,10 +80,7 @@ def test(i, model, data, toPrint):
             correct += (outputs.argmax(1) == label).sum().item()
             total += label.size(0)
         accuracy = 100 * correct / total
-    print(toPrint + f'{accuracy:.2f}%')
-    # free up everything
-    # th.cuda.synchronize()  # maybe not needed --> todo check better
-    th.cuda.empty_cache()
+    printv(toPrint + f'{accuracy:.2f}%')
     
 
 

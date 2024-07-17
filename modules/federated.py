@@ -46,7 +46,7 @@ def evalAggregate(data, results, trainSizes, batch_size):
     """
     # Aggregate the weights of the two models to see the federated model
     federated_model = networks.BrainClassifier()
-    federated_weights = aggregate_weights([results[i]['state_dict'] for i in range(len(results))], trainSizes)
+    federated_weights = aggregate_weights([res['state_dict'] for res in results.values()], trainSizes)
     federated_model.load_state_dict(federated_weights)
 
     data_agg = th.load(data)
@@ -55,4 +55,3 @@ def evalAggregate(data, results, trainSizes, batch_size):
     # val_loader_agg   = build_Dataloader(data_agg_val, batch_size)
     test_loader_agg    = build_Dataloader(data_agg_test, batch_size)
     test(0, federated_model, test_loader_agg, f'Accuracy of {len(results)} aggregated models on test set: ')
- 
