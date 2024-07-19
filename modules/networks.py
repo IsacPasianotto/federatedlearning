@@ -4,6 +4,7 @@
 
 import torch.nn as nn
 import torch.nn.functional as F
+from settings import DEBUG
 
 
 ####
@@ -48,3 +49,22 @@ class BrainClassifier(nn.Module):
         x = self.fc4(x)
 
         return x
+    
+    
+def print_param_sum(model):
+    total_sum = sum(p.sum().item() for p in model.parameters())
+    print(f"Sum of all parameters: {total_sum}")
+
+def print_layer_sums(model):
+    for name, param in model.named_parameters():
+        param_sum = param.sum().item()
+        print(f"{name}: Sum of values = {param_sum}")
+        
+def printdParams(models):
+    if DEBUG:
+        for i, model in enumerate(models):
+            toprint = f"Model {i}:" if i < len(models) - 1 else "Aggregated Model:"
+            print(toprint)
+            print_param_sum(model)
+            print_layer_sums(model)
+            print("---")

@@ -7,7 +7,7 @@ import torch as th
 import torch.multiprocessing as mp
 
 # Defined Modules
-from modules.dataset import Dataset, build_Dataloader
+from modules.dataset import buildData, buildDataloaders
 import modules.networks as networks
 from modules.traintest import train, test
 from modules.federated import evalAggregate
@@ -49,64 +49,49 @@ def main():
     else:
         raise RuntimeError("No CUDA devices found. This script requires GPU support. Aborting")
 
-    # parameters:
-    batch_size = BATCH_SIZE
-    nEpochs = N_EPOCHS
-    lr = LEARNING_RATE
-    weight_decay = WEIGHT_DECAY
-    agg_file = AGG_FILE
-    nCenters = NCENTERS
-
-    if IMPORT_DATA:
-        datasets = [[th.load(file) for file in center] for center in DATASETS]
-    else:
-        if len(set(map(len, PERC)))>1:
-            raise ValueError(f"Number of percentages should be the same for all centers")
-        allData = th.load(ALLDATA)
-        datasets = allData.splitClasses(PERC)
-    printd("datasets:",[[len(d) for d in dat] for dat in datasets])
-    data = [Dataset(files=d) for d in datasets]
-    printd("data:",[len(d) for d in data])
-    # Load datasets
-    train_data, val_data, test_data = zip(*[dataset.train_val_test_split() for dataset in data])
-    printd("trdata:",[len(t) for t in train_data], "valdata:", [len(v) for v in val_data], "testdata:", [len(v) for v in test_data])
-    train_loaders = [build_Dataloader(d, batch_size) for d in train_data]
-    val_loaders   = [build_Dataloader(d, batch_size) for d in val_data]
-    test_loaders  = [build_Dataloader(d, batch_size) for d in test_data]
-
+    data = buildData()
+    models = [networks.BrainClassifier() for _ in range(NCENTERS)]
     return_dict = mp.Manager().dict()
-    results = {}
-    printd("nbatches: train:", [len(l) for l in train_loaders], "val:",[len(v) for v in val_loaders])
-    printd("dataloaders size: train:", [len(l.dataset) for l in train_loaders], "val:",[len(v.dataset) for v in val_loaders])
-    for start in range(0, nCenters, nDevices):
-        end = min(start + nDevices, nCenters)
-        printd(f"doing from center {start+1} to {end} out of {nCenters}")
-        exec_procs( [ctx.Process(target = train,
-                                args = (i%nDevices, i, networks.BrainClassifier(), train_loaders[i], val_loaders[i], return_dict, nEpochs, lr, weight_decay)
-                                ) for i in range(start,end)] )
-        printd("len return_dict: ",len(return_dict))
-        results.update(return_dict)
-        printd("done, res has", len(results))
-        
-    # Once all centers have trained their own network, aggregate the results
-    # Create the final models with the trained weights
-    final_models = [networks.BrainClassifier() for _ in range(nCenters)]
-    for i in range(nCenters):
-        final_models[i].load_state_dict(results[i]['state_dict'])
+    for k in range(NITER_FED):
+        print(f"################################ Starting iteration {k+1} ################################")
+        results = {}
+        # Generate the datasets
+        train_loaders, val_loaders, test_loaders = buildDataloaders(data)
+        for start in range(0, NCENTERS, nDevices):
+            end = min(start + nDevices, NCENTERS)
+            printd(f"doing from center {start+1} to {end} out of {NCENTERS}")
+            exec_procs( [ctx.Process(target = train,
+                                    args = (i%nDevices, i, models[i], train_loaders[i], val_loaders[i], return_dict, N_EPOCHS, LEARNING_RATE, WEIGHT_DECAY)
+                                    ) for i in range(start,end)] )
+            printd("return_dict has len",len(return_dict))
+            results.update(return_dict)
+            printd("update done, results has len", len(results))
+   
+        # Once all centers have trained their own network, aggregate the results
+        # Create the final models with the trained weights
+        for i in range(NCENTERS):
+            models[i].load_state_dict(results[i]['state_dict'])
 
-    # Evaluate all models on their respective test sets
-    for start in range(0, nCenters, nDevices):
-        end = min(start + nDevices, nCenters)
-        exec_procs( [ctx.Process(target = test,
-                            args = (i%nDevices, final_models[i], test_loaders[i], f'Accuracy of the final model {i + 1} on its test set: ')
-                            ) for i in range(start,end)] )
-    trainSizes = [len(d) for d in train_data]
-    evalAggregate(agg_file, results, trainSizes, batch_size)
+        # Evaluate all models on their respective test sets
+        for start in range(0, NCENTERS, nDevices):
+            end = min(start + nDevices, NCENTERS)
+            exec_procs( [ctx.Process(target = test,
+                                    args = (i%nDevices, models[i], test_loaders[i], 
+                                            f'Accuracy of the final model {i + 1} on its test set: ')
+                                    ) for i in range(start,end)] )
+        trainSizes = [len(d.dataset) for d in train_loaders]
+        aggrModel = evalAggregate(test_loaders, models, trainSizes)
+        
+        networks.printdParams(models + [aggrModel]) 
+        
+        aggr_dict = aggrModel.state_dict()
+        for i in range(NCENTERS):
+            models[i].load_state_dict(aggr_dict)
     
 
 
 if __name__ == '__main__':
-    # model = networks.BrainClassifier()
-    # total_params = sum(p.numel() for p in model.parameters())
-    # print(f"Number of parameters: {total_params}")
+    model = networks.BrainClassifier()
+    total_params = sum(p.numel() for p in model.parameters())
+    printd(f"Total number of parameters: {total_params}")
     main()

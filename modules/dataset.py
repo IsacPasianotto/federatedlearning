@@ -6,6 +6,7 @@ import os
 import torch as th
 import numpy as np
 from torch.utils.data import Dataset, DataLoader, Subset, random_split
+from settings import *
 
 
 ####
@@ -131,3 +132,26 @@ def build_Dataloader(data, batch_size):
         DataLoader: The DataLoader object
     """
     return DataLoader(data, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
+
+def buildDataloaders(data):
+    train_data, val_data, test_data = zip(*[dataset.train_val_test_split() for dataset in data])
+    printd("trdata:",[len(t) for t in train_data], "valdata:", [len(v) for v in val_data], "testdata:", [len(v) for v in test_data])
+    train_loaders = [build_Dataloader(d, BATCH_SIZE) for d in train_data]
+    val_loaders   = [build_Dataloader(d, BATCH_SIZE) for d in val_data]
+    test_loaders  = [build_Dataloader(d, BATCH_SIZE) for d in test_data]
+    printd("nbatches: train:", [len(l) for l in train_loaders], "val:",[len(v) for v in val_loaders])
+    printd("dataloaders size: train:", [len(l.dataset) for l in train_loaders], "val:",[len(v.dataset) for v in val_loaders])
+    return train_loaders,val_loaders,test_loaders
+
+def buildData():
+    if IMPORT_DATA:
+        datasets = [[th.load(file) for file in center] for center in DATASETS]
+    else:
+        if len(set(map(len, PERC)))>1:
+            raise ValueError(f"Number of percentages should be the same for all centers")
+        allData = th.load(ALLDATA)
+        datasets = allData.splitClasses(PERC)
+    printd("datasets length:",[[len(d) for d in dat] for dat in datasets])
+    data = [Dataset(files=d) for d in datasets]
+    printd("data length:",[len(d) for d in data])
+    return data

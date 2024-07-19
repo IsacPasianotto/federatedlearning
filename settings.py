@@ -9,7 +9,7 @@ WEIGHT_DECAY=0.0001
 VERBOSE=True
 DEBUG=False
 
-
+NITER_FED = 10
 IMPORT_DATA=False
 
 # which file should we use for the aggregation evaluation?
