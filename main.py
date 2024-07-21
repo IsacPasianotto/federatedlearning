@@ -5,93 +5,66 @@
 # Downloaded Modules
 import torch as th
 import torch.multiprocessing as mp
+import torch.distributed as dist
+import os
 
 # Defined Modules
-from modules.dataset import buildData, buildDataloaders
+from modules.dataset import *
 import modules.networks as networks
 from modules.traintest import train, test
 from modules.federated import evalAggregate
 from settings import *
-
-
-####
-## Defined functions
-####
-
-def exec_procs(train_procs):
-    """ Execute all the given processes in parallel
-
-    Args:
-        train_procs (List[mp.Process]): the processes to execute
-    """
-    try:
-        for p in train_procs:
-            p.start()
-        for p in train_procs:
-            p.join()
-    # Ensure processes are terminated if something goes wrong
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        for p in train_procs:
-            p.terminate()
-            p.join()
-    #th.cuda.synchronize() # ensure that everyone has finished its work before starting the next batch
-
+    
 ####
 ## Define main function
 ####
 
 def main():
-    ctx = mp.get_context("spawn")
+    printd("start training")
+    dist.init_process_group("nccl")
+    global_rank = int(os.environ["RANK"])
+    local_rank = int(os.environ["LOCAL_RANK"])
+    world_size = int(os.environ["WORLD_SIZE"])
+    local_world_size = int(os.environ["LOCAL_WORLD_SIZE"])
+    node_rank = global_rank // local_world_size
+    num_nodes = world_size // local_world_size
+
     if th.cuda.is_available():
-        nDevices = th.cuda.device_count()
-        print(f"Found {nDevices} CUDA device(s) and {NCENTERS} center(s)")
+        device = th.device(f"cuda:{local_rank}")
+        th.cuda.set_device(device)
+        print(f"Process {global_rank} (Node {node_rank}, GPU {local_rank}) loading data")
     else:
         raise RuntimeError("No CUDA devices found. This script requires GPU support. Aborting")
 
-    data = buildData()
-    models = [networks.BrainClassifier() for _ in range(NCENTERS)]
-    return_dict = mp.Manager().dict()
-    for k in range(NITER_FED):
-        print(f"################################ Starting iteration {k+1} ################################")
-        results = {}
-        # Generate the datasets
-        train_loaders, val_loaders, test_loaders = buildDataloaders(data)
-        for start in range(0, NCENTERS, nDevices):
-            end = min(start + nDevices, NCENTERS)
-            printd(f"doing from center {start+1} to {end} out of {NCENTERS}")
-            exec_procs( [ctx.Process(target = train,
-                                    args = (i%nDevices, i, models[i], train_loaders[i], val_loaders[i], return_dict, N_EPOCHS, LEARNING_RATE, WEIGHT_DECAY)
-                                    ) for i in range(start,end)] )
-            printd("return_dict has len",len(return_dict))
-            results.update(return_dict)
-            printd("update done, results has len", len(results))
-   
-        # Once all centers have trained their own network, aggregate the results
-        # Create the final models with the trained weights
-        for i in range(NCENTERS):
-            models[i].load_state_dict(results[i]['state_dict'])
-
-        # Evaluate all models on their respective test sets
-        for start in range(0, NCENTERS, nDevices):
-            end = min(start + nDevices, NCENTERS)
-            exec_procs( [ctx.Process(target = test,
-                                    args = (i%nDevices, models[i], test_loaders[i], 
-                                            f'Accuracy of the final model {i + 1} on its test set: ')
-                                    ) for i in range(start,end)] )
-        trainSizes = [len(d.dataset) for d in train_loaders]
-        aggrModel = evalAggregate(test_loaders, models, trainSizes)
-        
-        networks.printdParams(models + [aggrModel]) 
-        
-        aggr_dict = aggrModel.state_dict()
-        for i in range(NCENTERS):
-            models[i].load_state_dict(aggr_dict)
+    myIDS = f"GPU{local_rank}_Node{node_rank}"
+    data_file = f"{DATA_PATH}/center{global_rank}.pt"
+    results_file = f"{RESULTS_PATH}/{myIDS}.pt"
+    data = th.load(data_file)
+    print(f"Rank {global_rank} loaded {data_file} with {len(data)} images")
+    model = networks.BrainClassifier().to(device)
+    if os.path.isfile(results_file):
+        printd(f"Found data, importing from {results_file}")
+        results = th.load(results_file)
+        model.load_state_dict(results)
+        test(model, device, build_Dataloader(data, BATCH_SIZE), f'Accuracy of the aggregated model on center {global_rank}: ')
     
+    # Generate the datasets
+    train_loader, val_loader, test_loader = buildDataloaders(data)
+    
+    results = train(model, device, global_rank, train_loader, val_loader, N_EPOCHS, LEARNING_RATE, WEIGHT_DECAY)
+    test(model, device, test_loader, f"Accuracy of the final model {global_rank} from {device}, node {node_rank} on its test set: ")
 
+    # Save the results
+    th.save(results, results_file)
+    print(f"Process {global_rank} (Node {node_rank}, GPU {local_rank}) finished training")
+
+    
+    networks.printdParams(model) # Print the number of parameters of the model
+    
+    dist.destroy_process_group()
 
 if __name__ == '__main__':
-    model = networks.BrainClassifier()
-    total_params = sum(p.numel() for p in model.parameters())
-    printd(f"Total number of parameters: {total_params}")
+    # model = networks.BrainClassifier()
+    # total_params = sum(p.numel() for p in model.parameters())
+    # printd(f"Total number of parameters: {total_params}")
     main()

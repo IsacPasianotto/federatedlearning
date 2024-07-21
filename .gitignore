@@ -1,40 +1,8 @@
-
-# data/
-# data/*
-# !data/.gitkeep
-
-data/brain_cancer/Brain Cancer/
-data/brain_cancer2/
-data/leukemia/Original/
-
-data/MNIST/
-data/MNIST/*
-
-dataBrain/
-
-
 .idea/
-.idea/*
-
-
-data/brain_cancer/brain_cancer_dataset.pt
-data/brain_cancer/brain_cancer_dataset_small.pt
 
 # All jupyter checkpoints
 .ipynb_checkpoints/
-.ipynb_checkpoints/*
-
-
-BrainCancer.zip
-data/BrainCancerDataset.pt
-data/BrainCancerDotMat/
-data/BrainCancerRawData/
-data/BrainCancerDotMat/*
-data/BrainCancerRawData/*
-
-Brain_weights.pth
-Leukemia_weights.pth
-data/leukemia/leukemia_small_dataset.pt
-data/leukemia/leukemia_dataset.pt
-
 **/__pycache__/
+
+data/
+dataOLD/

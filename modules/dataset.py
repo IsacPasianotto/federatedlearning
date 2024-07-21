@@ -39,7 +39,12 @@ class Dataset(Dataset):
         self.images = self.images[idx]
         self.labels = self.labels[idx]
 
-    def train_val_test_split(self, train_percentage=0.7, val_percentage=0.15, test_percentage=0.15):
+    def train_val_test_split(self, train_percentage=TRAINSIZE, val_percentage=VALSIZE, test_percentage=TESTSIZE):
+        if abs(train_percentage + val_percentage + test_percentage -1) > 10E-6:
+            train_percentage = 0.7
+            val_percentage = 0.15
+            test_percentage = 0.15
+            print(f"Error with train-val-test percentages, using default values: {train_percentage} {val_percentage} {test_percentage}")
         self.shuffle()
         train_size = int(train_percentage * len(self))
         val_size = int(val_percentage * len(self))
@@ -134,24 +139,11 @@ def build_Dataloader(data, batch_size):
     return DataLoader(data, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
 
 def buildDataloaders(data):
-    train_data, val_data, test_data = zip(*[dataset.train_val_test_split() for dataset in data])
-    printd("trdata:",[len(t) for t in train_data], "valdata:", [len(v) for v in val_data], "testdata:", [len(v) for v in test_data])
-    train_loaders = [build_Dataloader(d, BATCH_SIZE) for d in train_data]
-    val_loaders   = [build_Dataloader(d, BATCH_SIZE) for d in val_data]
-    test_loaders  = [build_Dataloader(d, BATCH_SIZE) for d in test_data]
-    printd("nbatches: train:", [len(l) for l in train_loaders], "val:",[len(v) for v in val_loaders])
-    printd("dataloaders size: train:", [len(l.dataset) for l in train_loaders], "val:",[len(v.dataset) for v in val_loaders])
-    return train_loaders,val_loaders,test_loaders
-
-def buildData():
-    if IMPORT_DATA:
-        datasets = [[th.load(file) for file in center] for center in DATASETS]
-    else:
-        if len(set(map(len, PERC)))>1:
-            raise ValueError(f"Number of percentages should be the same for all centers")
-        allData = th.load(ALLDATA)
-        datasets = allData.splitClasses(PERC)
-    printd("datasets length:",[[len(d) for d in dat] for dat in datasets])
-    data = [Dataset(files=d) for d in datasets]
-    printd("data length:",[len(d) for d in data])
-    return data
+    train_data, val_data, test_data = data.train_val_test_split()
+    printd("trdata:",len(train_data), "valdata:", len(val_data), "testdata:", len(test_data))
+    train_loader = build_Dataloader(train_data, BATCH_SIZE)
+    val_loader   = build_Dataloader(val_data, BATCH_SIZE)
+    test_loader  = build_Dataloader(test_data, BATCH_SIZE)
+    printd("nbatches: train:", len(train_loader), "val:", len(val_loader))
+    printd("dataloaders size: train:", len(train_loader.dataset), "val:", len(val_loader.dataset))
+    return train_loader,val_loader,test_loader

@@ -4,7 +4,7 @@
 
 import torch.nn as nn
 import torch.nn.functional as F
-from settings import DEBUG
+from settings import PRINTWEIGHTS
 
 
 ####
@@ -60,11 +60,9 @@ def print_layer_sums(model):
         param_sum = param.sum().item()
         print(f"{name}: Sum of values = {param_sum}")
         
-def printdParams(models):
-    if DEBUG:
-        for i, model in enumerate(models):
-            toprint = f"Model {i}:" if i < len(models) - 1 else "Aggregated Model:"
-            print(toprint)
-            print_param_sum(model)
-            print_layer_sums(model)
-            print("---")
+def printdParams(model):
+    if PRINTWEIGHTS:
+        print(f"Model:")
+        print_param_sum(model)
+        print_layer_sums(model)
+        print("---")
