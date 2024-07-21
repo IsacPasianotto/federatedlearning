@@ -4,7 +4,6 @@
 
 import torch.nn as nn
 import torch.nn.functional as F
-from settings import PRINTWEIGHTS
 
 
 ####
@@ -28,10 +27,10 @@ class BrainClassifier(nn.Module):
 
         self.fc_input_size = 64 * 64 * 64  # Ensure this calculation matches the output size of the conv layers
 
-        self.fc1 = nn.Linear(self.fc_input_size, 512)
-        self.fc2 = nn.Linear(512, 512)
-        self.fc3 = nn.Linear(512, 512)
-        self.fc4 = nn.Linear(512, 3)  # 3 classes
+        self.fc1 = nn.Linear(self.fc_input_size, 16)
+        self.fc2 = nn.Linear(16, 8)
+        self.fc3 = nn.Linear(8, 4)
+        self.fc4 = nn.Linear(4, 3)  # 3 classes
 
     def forward(self, x):
         x = F.relu(self.conv1(x))
@@ -60,9 +59,8 @@ def print_layer_sums(model):
         param_sum = param.sum().item()
         print(f"{name}: Sum of values = {param_sum}")
         
-def printdParams(model):
-    if PRINTWEIGHTS:
-        print(f"Model:")
-        print_param_sum(model)
-        print_layer_sums(model)
-        print("---")
+def printParams(model):
+    print(f"Model:")
+    print_param_sum(model)
+    print_layer_sums(model)
+    print("---")

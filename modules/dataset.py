@@ -1,17 +1,12 @@
-####
-## Imports
-####
-
+# Downloaded Modules
 import os
 import torch as th
 import numpy as np
 from torch.utils.data import Dataset, DataLoader, Subset, random_split
+
+# Defined Modules
 from settings import *
 
-
-####
-## Defined class
-####
 
 class Dataset(Dataset):
     def __init__ (self, images=None, labels=None, files=None):
@@ -91,9 +86,9 @@ class Dataset(Dataset):
                 output[i,j] = newData
                 if save:
                     label = self.labelStr(i)
-                    os.makedirs(f"dataBrain/{label}", exist_ok=True)
+                    os.makedirs(f"data/{label}", exist_ok=True)
                     # Save the new dataset
-                    th.save(newData, f"dataBrain/{label}/{label}{int(percentPerClass[i][j]*100)}_{j}.pt")
+                    th.save(newData, f"data/{label}/{label}{int(percentPerClass[i][j]*100)}_{j}.pt")
         return output.T
 
     def importFromFiles(self, files):
@@ -126,7 +121,7 @@ class Dataset(Dataset):
 
 
 
-def build_Dataloader(data, batch_size): 
+def build_Dataloader(data, batch_size=BATCH_SIZE): 
     """ Build a DataLoader object for the given data
 
     Args:
@@ -138,12 +133,21 @@ def build_Dataloader(data, batch_size):
     """
     return DataLoader(data, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
 
+
 def buildDataloaders(data):
+    """ Split the given data in train, val, test sets and build their dataloaders
+
+    Args:
+        data (th.Dataset): the data to be split
+
+    Returns:
+        th.Dataloader, th.Dataloader, th.Dataloader: train, val, test dataloaders
+    """
     train_data, val_data, test_data = data.train_val_test_split()
     printd("trdata:",len(train_data), "valdata:", len(val_data), "testdata:", len(test_data))
-    train_loader = build_Dataloader(train_data, BATCH_SIZE)
-    val_loader   = build_Dataloader(val_data, BATCH_SIZE)
-    test_loader  = build_Dataloader(test_data, BATCH_SIZE)
+    train_loader = build_Dataloader(train_data)
+    val_loader   = build_Dataloader(val_data)
+    test_loader  = build_Dataloader(test_data)
     printd("nbatches: train:", len(train_loader), "val:", len(val_loader))
     printd("dataloaders size: train:", len(train_loader.dataset), "val:", len(val_loader.dataset))
-    return train_loader,val_loader,test_loader
+    return train_loader, val_loader, test_loader
