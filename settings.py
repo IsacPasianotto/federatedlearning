@@ -12,12 +12,16 @@ PRINTWEIGHTS=False
 
 NITER_FED = 3
 
-DATA_PATH = './data'
+DATA_PATH = './data/'
 
 RESULTS_PATH = './results'
 
 # file that contains all data, to be distributed among data
-ALLDATA = DATA_PATH + '/BrainCancerDataset.pt'
+DOWNLOAD_URL = 'https://figshare.com/ndownloader/articles/1512427/versions/5'
+ALLDATA = DATA_PATH + 'BrainCancerDataset.pt'
+ZIP_FILE = DATA_PATH + 'BrainCancer.zip'
+EXTRACT_DIR = DATA_PATH + 'BrainCancerRawData/'
+DOTMAT_DIR = DATA_PATH + 'BrainCancerDotMat/'
 
 #perc must have shape (nCenters, nClasses): each tensor represents the percentages in which to split each class
 
