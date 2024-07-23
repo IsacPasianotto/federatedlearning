@@ -1,7 +1,6 @@
 # Downloaded Modules
 import os
 import torch as th
-import numpy as np
 from torch.utils.data import Dataset, DataLoader, Subset, random_split
 
 # Defined Modules
@@ -69,9 +68,9 @@ class Dataset(Dataset):
         if len(percentPerClass) != nClasses:
             raise ValueError(f"The number of percentages arrays should be equal to the number of classes ({nClasses})")
         for percentList in percentPerClass:
-            if not np.isclose(np.sum(percentList), 1.0, atol=1e-6):
+            if not th.isclose(th.sum(percentList), 1.0, atol=1e-6):
                 raise ValueError(f"The sum of the percentages of each class should be 1, but got {sum(percentList)} in {percentList}")
-        output = np.empty((nClasses, len(percentPerClass[0])), dtype=object)
+        output = th.empty((nClasses, len(percentPerClass[0])), dtype=object)
         for i in range(nClasses):
             dataset_size = len(datasets[i])
             split_sizes = [int(p * dataset_size) for p in percentPerClass[i][:-1]]
@@ -121,7 +120,7 @@ class Dataset(Dataset):
 
 
 
-def build_Dataloader(data, batch_size=BATCH_SIZE): 
+def build_Dataloader(data, batch_size=BATCH_SIZE):
     """ Build a DataLoader object for the given data
 
     Args:
@@ -151,3 +150,4 @@ def buildDataloaders(data):
     printd("nbatches: train:", len(train_loader), "val:", len(val_loader))
     printd("dataloaders size: train:", len(train_loader.dataset), "val:", len(val_loader.dataset))
     return train_loader, val_loader, test_loader
+

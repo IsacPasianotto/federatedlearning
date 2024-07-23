@@ -1,4 +1,4 @@
-import numpy as np
+import torch as th
 
 # Training parameters
 BATCH_SIZE=64
@@ -19,17 +19,24 @@ RESULTS_PATH = './results'
 # file that contains all data, to be distributed among data
 ALLDATA = DATA_PATH + '/BrainCancerDataset.pt'
 
-#perc must have shape (nClasses, nCenters): each tensor represents the percentages in which to split each class
-PERC = np.array([[0.4, 0.3, 0.2, 0.1],  # Meningioma (708)
-                 [0.3, 0.1, 0.4, 0.2],  # Glioma (1426)
-                 [0.2, 0.4, 0.3, 0.1] ] )# Pituitary tumor (915)
+#perc must have shape (nCenters, nClasses): each tensor represents the percentages in which to split each class
+
+PERC = th.tensor([[0.4, 0.3, 0.2],     # Center 1
+                 [0.3, 0.1, 0.4],     # Center 2
+                 [0.2, 0.4, 0.3],     # Center 3
+                 [0.1, 0.2, 0.3]      # Center 4
+                 ])
+
+NCENTERS = len(PERC)
+
+# The code was originally written for PERC written in the transposed form
+PERC = th.t(PERC)
 
 TRAINSIZE = 0.7
 VALSIZE = 0.15
 TESTSIZE = 0.15
 
 
-NCENTERS = len(PERC[0])
 
 CLASS_SIZES = [708, 1426, 915]
 
@@ -40,3 +47,4 @@ def printv(*args, **kwargs):
 def printd(*args, **kwargs):
     if DEBUG:
         print(*args, **kwargs)
+
