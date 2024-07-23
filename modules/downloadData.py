@@ -7,10 +7,7 @@ from settings import *
 
 
 def exploreDir(dir, fileExt):
-    return [ os.path.join(dir, file) for _,_, files in os.walk(dir)
-            for file in files
-            if any(file.endswith(fileExt))
-            ]
+    return [ os.path.join(dir, file) for _,_, files in os.walk(dir) for file in files if file.endswith(fileExt) ]
 
 def buildImgs_Labs():
     images= []
