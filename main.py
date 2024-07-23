@@ -7,7 +7,7 @@ import os
 from modules.dataset import *
 from modules.networks import BrainClassifier, printParams
 from modules.traintest import train, test
-from settings import *
+from modules.settings import *
     
 ####
 ## Define main function
