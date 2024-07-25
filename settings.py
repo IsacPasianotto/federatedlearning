@@ -5,7 +5,6 @@
 import torch as th
 from torch import Tensor
 
-
 ########
 ## Neural Network settings
 ########

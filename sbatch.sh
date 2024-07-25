@@ -9,7 +9,7 @@
 #SBATCH --gres=gpu:2
 #SBATCH --time=00:20:00
 
-source /u/dssc/ipasia00/newdgxenv/bin/activate 
+source $(pwd)/federatedenv/bin/activate
 
 rm -rf results/
 mkdir results/
