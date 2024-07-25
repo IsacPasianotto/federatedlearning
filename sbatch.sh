@@ -14,7 +14,7 @@ rm -rf data/center*
 rm -rf results/
 mkdir results/
 
-python3 generateData.py
+python3 src/build_local_center_dataset.py
 
 # Set the master node's address
 export MASTER_ADDR=$(scontrol show hostnames $SLURM_JOB_NODELIST | head -n 1)
@@ -28,7 +28,7 @@ do
     echo "Starting iteration $i"
     srun --cpu-bind=none torchrun --nnodes=$SLURM_NNODES --nproc_per_node=$SLURM_GPUS_ON_NODE --rdzv_id="${SLURM_JOB_ID}_${i}" --rdzv_backend=c10d --rdzv_endpoint=$MASTER_ADDR:$MASTER_PORT main.py
     echo "Iteration $i completed"
-    python3 aggregate.py $SLURM_GPUS_ON_NODE $SLURM_NNODES
+    python3 src/aggregate_weights.py $SLURM_GPUS_ON_NODE $SLURM_NNODES
     echo "############################# Completed federated learning epoch $((i+1)) #############################"
 done
 

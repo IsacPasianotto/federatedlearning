@@ -1,74 +1,93 @@
+########
+## Imports
+########
+
 import torch as th
 
-# Training parameters
-BATCH_SIZE=64
-N_EPOCHS=5
-LEARNING_RATE=0.001
-WEIGHT_DECAY=0.0001
+########
+## Neural Network settings
+########
 
-VERBOSE=True
-DEBUG=False
-PRINTWEIGHTS=False
+BATCH_SIZE:    int   = 128
+N_EPOCHS:      int   = 5
+LEARNING_RATE: float = 1e-4
+WEIGHT_DECAY:  float = 1e-4
+TRAINSIZE:     float = 0.7
+VALSIZE:       float = 0.15
+TESTSIZE:      float = 0.15
 
-NITER_FED = 5
+########
+## Data settings
+########
 
-DATA_PATH = './data'
+DATA_PATH:    str  = './data'
+RESULTS_PATH: str  = './results'
+AUGMENT_DATA: bool = True
+# To generate the initial Dataset:
 
-RESULTS_PATH = './results'
+DOWNLOAD_URL:    str = "https://www.kaggle.com/api/v1/datasets/download/masoudnickparvar/brain-tumor-mri-dataset?datasetVersionNumber=1"
+ALLDATA:         str = DATA_PATH + '/BrainCancerDataset.pt'
+ZIP_FILE:        str = DATA_PATH + '/BrainCancer.zip'
+EXTRACT_DIR:     str = DATA_PATH + '/BrainCancerRawData/'
+FILE_EXT:        str = '.jpg'
+PIC_SQUARE_SIZE: int = 512
 
-# file that contains all data, to be distributed among data
-#DOWNLOAD_URL = 'https://figshare.com/ndownloader/articles/1512427/versions/5'
-DOWNLOAD_URL = "https://www.kaggle.com/api/v1/datasets/download/masoudnickparvar/brain-tumor-mri-dataset?datasetVersionNumber=1"
+LABELS: dict[str, int] = {
+    'notumor': 0,
+    'meningioma': 1,
+    'glioma': 2,
+    'pituitary': 3
+}
 
-#ALLDATA = DATA_PATH + 'BrainCancerDataset.pt'
-ALLDATA = DATA_PATH + '/BrainCancerDatasetNew.pt'
+CLASS_SIZES: list[int] = [708, 1426, 915]
 
-#ZIP_FILE = DATA_PATH + 'BrainCancer.zip'
-ZIP_FILE = DATA_PATH + '/BrainCancerNew.zip'
+########
+## Federated Learning settings
+########
 
-#EXTRACT_DIR = DATA_PATH + 'BrainCancerRawData/'
-EXTRACT_DIR = DATA_PATH + '/BrainCancerRawDataNew/'
+NINTER_FED: int = 5
 
-#DOTMAT_DIR = DATA_PATH + 'BrainCancerDotMat/'
-DOTMAT_DIR = DATA_PATH + '/BrainCancerDotMatNew/'
+# PERC must have shape (nCenters, nClasses): each tensor represents the percentages in which to split each class
 
-#FILE_EXT='.mat'
-FILE_EXT = '.jpg'
-PIC_SQUARE_SIZE = 512   # the most common size
+PERC: th.Tensor[th.float32] = th.tensor(
+    [[0.4, 0.3, 0.2, 0.5],      # Center 1
+     [0.3, 0.1, 0.4, 0.2],      # Center 2
+     [0.2, 0.4, 0.3, 0.1],      # Center 3
+     [0.1, 0.2, 0.1, 0.2],      # Center 4
+     # ...
+    ])
 
-#perc must have shape (nCenters, nClasses): each tensor represents the percentages in which to split each class
-
-PERC = th.tensor([[0.4, 0.3, 0.2, 0.5],     # Center 1
-                 [0.3, 0.1, 0.4, 0.2],     # Center 2
-                 [0.2, 0.4, 0.3, 0.1],     # Center 3
-                 [0.1, 0.2, 0.1, 0.2],     # Center 4
-                 ])
-
-LABELS = {
-        'notumor': 0,
-        'meningioma': 1,
-        'glioma': 2,
-        'pituitary': 3
-        }
-
-NCENTERS = len(PERC)
-NCLASSES = len(LABELS)
+NCENTERS: int = len(PERC)
+NCLASSES: int = len(LABELS)
 
 # The code was originally written for PERC written in the transposed form
 PERC = th.t(PERC)
 
-TRAINSIZE = 0.7
-VALSIZE = 0.15
-TESTSIZE = 0.15
+########
+## Debug & Other settings
+########
 
+VERBOSE:      bool = True
+DEBUG:        bool = False
+PRINTWEIGHTS: bool = False
 
+def printw(*args, **kwargs) -> None:
+    """
+    Print the weights of the model if PRINTWEIGHTS setting is True
+    """
+    if PRINTWEIGHTS:
+        print(*args, **kwargs)
 
-CLASS_SIZES = [708, 1426, 915]
-
-def printv(*args, **kwargs):
+def printv(*args, **kwargs) -> None:
+    """
+    Print the message if VERBOSE setting is True
+    """
     if VERBOSE:
         print(*args, **kwargs)
 
-def printd(*args, **kwargs):
+def printd(*args, **kwargs) -> None:
+    """
+    Print the message if DEBUG setting is True
+    """
     if DEBUG:
         print(*args, **kwargs)
