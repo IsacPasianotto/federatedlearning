@@ -146,7 +146,7 @@ class Dataset(Dataset):
 
     def splitClasses(
             self,
-            percentPerClass: list[List[float]],
+            percentPerClass: list[list[float]],
             save:            bool = False
     ) -> list:
 

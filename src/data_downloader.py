@@ -41,7 +41,7 @@ def exploreDir(
 
 def buildImgs_Labs(
         augment: bool = AUGMENT_DATA
-    ) -> tuple[th.Tensor[th.float32], th.Tensor[th.long]]:
+    ) -> tuple[th.Tensor, th.Tensor]:
     """Build the images and labels tensors from the dataset.
 
        If augment is True, it will also augment the images duplicating them and applying some transformations to the copies.
@@ -52,8 +52,8 @@ def buildImgs_Labs(
         Whether to augment the images or not. The default is taken from the settings file.
     """
 
-    images:      list[th.Tensor[th.float32]] = []
-    labels:      list[th.Tensor[th.long]]    = []
+    images:      list[th.Tensor] = []
+    labels:      list[th.Tensor]    = []
     image_files: list[str]                   = exploreDir(EXTRACT_DIR, FILE_EXT)
 
     # Original pictures are only uniformed in size and transformed to tensors
@@ -62,7 +62,7 @@ def buildImgs_Labs(
         transforms.ToTensor()
     ])
 
-    if augmented:
+    if augment:
         transform_augmented: transforms.Compose = transforms.Compose([
             transforms.Resize((PIC_SQUARE_SIZE, PIC_SQUARE_SIZE)),    # Resize images to a fixed size
             transforms.RandomHorizontalFlip(),                        # Apply random horizontal flip
@@ -86,8 +86,8 @@ def buildImgs_Labs(
             labels.append(label)
 
     # Stack all the tensors in a single tensor
-    images: th.Tensor[th.float32] = th.stack(images)
-    labels: th.Tensor[th.long]    = th.tensor(labels)
+    images: th.Tensor = th.stack(images)
+    labels: th.Tensor = th.tensor(labels)
 
     return images, labels
 

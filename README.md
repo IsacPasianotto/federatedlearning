@@ -1,5 +1,3 @@
-Init readme
-
 
 # TODO:
 
@@ -7,7 +5,7 @@ Init readme
 - [ ] Consistency... al in CamelCase or all in snake_case. (better snake)
 - [ ] In the `DataSet` class: in the `splitClasses` method there is `numpy`
 - [ ] Fix all the variable names in snake_case in `src/aggregate_weights.py`
-
+- [ ] Subsitute the print of the accuracy of the varios network with a way to save it in order to plot it later
 
 # 0. Table of contents
 
@@ -43,3 +41,4 @@ Init readme
 Table with all the description of all the settings.
 
 ...
+

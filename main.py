@@ -43,8 +43,8 @@ def main() -> None:
     else:
         raise RuntimeError("No CUDA devices found. This code requires GPU support. Aborting")
 
-    data_file:    str = f"{DATA_PATH}/center{global_rank}.pt"
-    results_file: str = f"{RESULTS_PATH}/GPU{local_rank}_Node{node_rank}.pt"
+    data_file:    str = f"{DATA_PATH}/center_{global_rank}.pt"
+    results_file: str = f"{RESULTS_PATH}/GPU_{local_rank}_Node_{node_rank}.pt"
 
     data: Dataset = th.load(data_file)
     printd(f"Rank {global_rank} loaded {data_file} having {len(data)} images")
@@ -69,7 +69,7 @@ def main() -> None:
 
     printd("Training on", device, "for", global_rank, "with", len(train_loader), len(train_loader.dataset), "and", len(val_loader), len(val_loader.dataset))
 
-    net_weights: th.Tensor = th.Tensor()
+    net_weights: dict      = train(model, device, train_loader, val_loader) 
     acc:         float     = test(model, device, test_loader)
     printv(f"Accuracy of the final model {global_rank} from {device}, node {node_rank} on its test set: {acc:.2f}%")
 

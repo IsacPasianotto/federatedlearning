@@ -3,6 +3,8 @@
 ########
 
 import torch as th
+from torch import Tensor
+
 
 ########
 ## Neural Network settings
@@ -45,11 +47,11 @@ CLASS_SIZES: list[int] = [708, 1426, 915]
 ## Federated Learning settings
 ########
 
-NINTER_FED: int = 5
+NITER_FED: int = 5
 
 # PERC must have shape (nCenters, nClasses): each tensor represents the percentages in which to split each class
 
-PERC: th.Tensor[th.float32] = th.tensor(
+PERC: Tensor = th.tensor(
     [[0.4, 0.3, 0.2, 0.5],      # Center 1
      [0.3, 0.1, 0.4, 0.2],      # Center 2
      [0.2, 0.4, 0.3, 0.1],      # Center 3
@@ -76,18 +78,18 @@ def printw(*args, **kwargs) -> None:
     Print the weights of the model if PRINTWEIGHTS setting is True
     """
     if PRINTWEIGHTS:
-        print(*args, **kwargs)
+        print(*args, **kwargs, flush=True)
 
 def printv(*args, **kwargs) -> None:
     """
     Print the message if VERBOSE setting is True
     """
     if VERBOSE:
-        print(*args, **kwargs)
+        print(*args, **kwargs, flush=True)
 
 def printd(*args, **kwargs) -> None:
     """
     Print the message if DEBUG setting is True
     """
     if DEBUG:
-        print(*args, **kwargs)
+        print(*args, **kwargs, flush=True)

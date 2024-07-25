@@ -2,6 +2,7 @@
 ## Imports
 ########
 
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -32,28 +33,24 @@ class BrainClassifier(nn.Module):
 
         self.flatten: nn.Flatten = nn.Flatten()
 
-        self.fc_input_size: int  = 64 * 64 * 64  # Ensure this calculation matches the output size of the conv layers
+        self.fc_input_size: int = 64 * 64 * 64  # Ensure this calculation matches the output size of the conv layers
 
         self.fc1: nn.Linear = nn.Linear(self.fc_input_size, 16)
         self.fc2: nn.Linear = nn.Linear(16, 8)
         self.fc3: nn.Linear = nn.Linear(8, 4)
-        self.fc4: nn.Linear = nn.Linear(4, 4)  # 4 out classes classes
+        self.fc4: nn.Linear = nn.Linear(4, 4)  # 4 out classes
 
-
-    def forward(
-            self,
-            x: nn.Tensor
-        ) -> nn.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass of the model
 
         Parameters
         ----------
-        x : nn.Tensor, required
+        x : torch.Tensor, required
             Input tensor of shape [batch_size, 3, PIC_SQUARE_SIZE, PIC_SQUARE_SIZE]
 
         Returns
         -------
-        nn.Tensor
+        torch.Tensor
             Output tensor of shape [batch_size, 4]
         """
 
@@ -78,18 +75,14 @@ class BrainClassifier(nn.Module):
 ## Other utilities
 ########
 
-def print_param_sum(
-        model: nn.Module
-    ) -> None:
+def print_param_sum(model: nn.Module) -> None:
     """
     Print the sum of all parameters of the model. This can useful to check if the model is loaded correctly or the training is actually changing the weights.
     """
     total_sum = sum(p.sum().item() for p in model.parameters())
     print(f"Sum of all parameters: {total_sum}")
 
-def print_layer_sums(
-        model: nn.Module
-    ) -> None:
+def print_layer_sums(model: nn.Module) -> None:
     """
     Print the sum of all parameters of the model. This can useful to check if the model is loaded correctly or the training is actually changing the weights.
     """
@@ -97,10 +90,7 @@ def print_layer_sums(
         param_sum = param.sum().item()
         print(f"{name}: Sum of values = {param_sum}")
 
-
-def printParams(
-        model: nn.Module
-    ) -> None:
+def printParams(model: nn.Module) -> None:
     """
     Print the sum of all parameters of the model and the sum of all parameters of each layer.
     Used for debugging purposes.
