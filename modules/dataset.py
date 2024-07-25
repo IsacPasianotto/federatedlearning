@@ -1,6 +1,8 @@
 # Downloaded Modules
 import os
+import warnings
 import torch as th
+import numpy as np
 from torch.utils.data import Dataset, DataLoader, Subset, random_split
 
 # Defined Modules
@@ -26,7 +28,9 @@ class Dataset(Dataset):
         return self.images[idx], self.labels[idx]
 
     def labelStr(self,label):
-            return "Meningioma" if label == 0 else "Glioma" if label == 1 else "Pituitary tumor" if label == 2 else "unknown"
+            for lab, n in LABELS.items():
+                if n == label:
+                    return lab
 
     def shuffle(self):
         idx = th.randperm(self.__len__())
@@ -45,10 +49,12 @@ class Dataset(Dataset):
         test_size = len(self) - train_size - val_size
         return random_split(self, [train_size, val_size, test_size])
 
-    def separateClasses(self):
-        nClasses = th.max(self.labels)+1
-        return [Subset(self, th.where(self.labels == i)[0]) for i in range(nClasses)]
-
+    def dbg(self, datasets, percentPerClass):
+        lens = [len(d) for d in datasets]
+        def dot(a,b):
+            return sum(int(x*y) for x,y in zip(a,b))
+        printd(f"Expected sizes: {[dot(lens, list(p)) for p in percentPerClass.T]}")
+        
     def splitClasses(self, percentPerClass, save=False):
         """Split the dataset into multiple datasets, one for each class and center, and saves them if desired
 
@@ -63,31 +69,31 @@ class Dataset(Dataset):
         Returns:
             List[List[Dataset]]: List of the created datasets, one for each class and center
         """
-        datasets = self.separateClasses()
-        nClasses = len(datasets)
-        if len(percentPerClass) != nClasses:
-            raise ValueError(f"The number of percentages arrays should be equal to the number of classes ({nClasses})")
-        for percentList in percentPerClass:
-            if not th.isclose(th.sum(percentList), 1.0, atol=1e-6):
-                raise ValueError(f"The sum of the percentages of each class should be 1, but got {sum(percentList)} in {percentList}")
-        output = th.empty((nClasses, len(percentPerClass[0])), dtype=object)
-        for i in range(nClasses):
-            dataset_size = len(datasets[i])
-            split_sizes = [int(p * dataset_size) for p in percentPerClass[i][:-1]]
-            split_sizes.append(dataset_size - sum(split_sizes))  # Add the remaining elements to the last subset
-            data = random_split(datasets[i], split_sizes)
+        datasets = [Subset(self, th.where(self.labels == i)[0]) for i in range(NCLASSES)]
+        self.dbg(datasets, percentPerClass)
+        if len(percentPerClass) != NCLASSES:
+            raise ValueError(f"The number of percentages for each center should be equal to the number of classes ({NCLASSES}), fill with zeroes if you don't want to consider some classes")
+        if not th.all(th.isclose(th.sum(percentPerClass, dim=1), th.ones(1))):
+            raise ValueError(f"The sum of the percentages of each class should be 1, but got {th.sum(percentPerClass, dim=1)}")
+        output = np.empty((NCLASSES, NCENTERS), dtype=object)
+        for i in range(NCLASSES):
+            #warnings.filterwarnings("ignore", category=UserWarning, message="Length of split.*") # Ignore the warning about the 0 length of splits if there are percentages equal to 0
+            data = random_split(datasets[i], percentPerClass[i])
+            printd(percentPerClass[i])
+            printd(len(datasets[i]), [len(d) for d in data])
             for j, subset in enumerate(data):
                 # Extract data from the subset
-                images = th.stack([subset.dataset[idx][0] for idx in subset.indices])
-                labels = th.tensor([subset.dataset[idx][1] for idx in subset.indices])
-                # Create a new dataset
-                newData = Dataset(images, labels)
-                output[i,j] = newData
-                if save:
-                    label = self.labelStr(i)
-                    os.makedirs(f"data/{label}", exist_ok=True)
-                    # Save the new dataset
-                    th.save(newData, f"data/{label}/{label}{int(percentPerClass[i][j]*100)}_{j}.pt")
+                if len(subset) > 0:
+                    images = th.stack([subset.dataset[idx][0] for idx in subset.indices])
+                    labels = th.tensor([subset.dataset[idx][1] for idx in subset.indices])
+                    # Create a new dataset
+                    newData = Dataset(images, labels)
+                    output[i,j] = newData
+                    if save:
+                        label = self.labelStr(i)
+                        os.makedirs(f"data/{label}", exist_ok=True)
+                        # Save the new dataset
+                        th.save(newData, f"data/{label}/{label}{int(percentPerClass[i][j]*100)}_{j}.pt")
         return output.T
 
     def importFromFiles(self, files):
@@ -102,20 +108,22 @@ class Dataset(Dataset):
         imgs = []
         labs = []
         for file in files:
-            if isinstance(file, str):
-                if not os.path.isfile(file):
-                    raise ValueError(f"File {file} does not exist")
-                data = th.load(file)
-                if not isinstance(data, Dataset):
-                    raise ValueError(f"File {file} does not contain a Dataset object")
-            elif isinstance(file, Dataset):
-                data = file
-            else:
-                raise ValueError(f"Invalid file type: {type(file)}")
-            imgs.append(data.images)
-            labs.append(data.labels)
+            if file is not None:
+                if isinstance(file, str):
+                    if not os.path.isfile(file):
+                        raise ValueError(f"File {file} does not exist")
+                    data = th.load(file)
+                    if not isinstance(data, Dataset):
+                        raise ValueError(f"File {file} does not contain a Dataset object")
+                elif isinstance(file, Dataset):
+                    data = file
+                else:
+                    raise ValueError(f"Invalid file type: {type(file)}")
+                imgs.append(data.images)
+                labs.append(data.labels)
         self.images = th.cat(imgs)
         self.labels = th.cat(labs)
+        printd("nImgs:", len(self.images))
         self.shuffle()
 
 

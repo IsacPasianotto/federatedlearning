@@ -7,7 +7,7 @@ import os
 from modules.dataset import *
 from modules.networks import BrainClassifier, printParams
 from modules.traintest import train, test
-from modules.settings import *
+from settings import *
     
 ####
 ## Define main function
@@ -40,7 +40,7 @@ def main():
         printv(f'Accuracy of the aggregated model on center {global_rank}: {acc:.2f}%')
     
     train_loader, val_loader, test_loader = buildDataloaders(data)
-    printd("Training on", device, " for ", global_rank, " with ", len(train_loader), len(train_loader.dataset), " and ", len(val_loader), len(val_loader.dataset))
+    printd("Training on", device, "for", global_rank, "with", len(train_loader), len(train_loader.dataset), "and", len(val_loader), len(val_loader.dataset))
     net_weights = train(model, device, train_loader, val_loader)
     acc = test(model, device, test_loader)
     printv(f"Accuracy of the final model {global_rank} from {device}, node {node_rank} on its test set: {acc:.2f}%")
@@ -51,6 +51,7 @@ def main():
 
     if PRINTWEIGHTS:
         printParams(model) # Print the number of parameters of the model
+    dist.barrier()
     dist.destroy_process_group()
 
 if __name__ == '__main__':

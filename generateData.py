@@ -7,6 +7,7 @@ def main():
     data = th.load(ALLDATA)
     datasets = data.splitClasses(PERC)
     newData = [Dataset(files=d) for d in datasets]
+    printd(f"Saving {len(newData)} datasets with {[len(d) for d in newData]} elements") 
     for i,d in enumerate(newData):
         th.save(d, f"data/center{i}.pt")
 

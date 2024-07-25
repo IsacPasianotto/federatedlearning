@@ -2,17 +2,17 @@ import torch as th
 
 # Training parameters
 BATCH_SIZE=64
-N_EPOCHS=1
+N_EPOCHS=5
 LEARNING_RATE=0.001
 WEIGHT_DECAY=0.0001
 
 VERBOSE=True
-DEBUG=True
+DEBUG=False
 PRINTWEIGHTS=False
 
-NITER_FED = 3
+NITER_FED = 5
 
-DATA_PATH = './data/'
+DATA_PATH = './data'
 
 RESULTS_PATH = './results'
 
@@ -21,16 +21,16 @@ RESULTS_PATH = './results'
 DOWNLOAD_URL = "https://www.kaggle.com/api/v1/datasets/download/masoudnickparvar/brain-tumor-mri-dataset?datasetVersionNumber=1"
 
 #ALLDATA = DATA_PATH + 'BrainCancerDataset.pt'
-ALLDATA = DATA_PATH + 'BrainCancerDatasetNew.pt'
+ALLDATA = DATA_PATH + '/BrainCancerDatasetNew.pt'
 
 #ZIP_FILE = DATA_PATH + 'BrainCancer.zip'
-ZIP_FILE = DATA_PATH + 'BrainCancerNew.zip'
+ZIP_FILE = DATA_PATH + '/BrainCancerNew.zip'
 
 #EXTRACT_DIR = DATA_PATH + 'BrainCancerRawData/'
-EXTRACT_DIR = DATA_PATH + 'BrainCancerRawDataNew/'
+EXTRACT_DIR = DATA_PATH + '/BrainCancerRawDataNew/'
 
 #DOTMAT_DIR = DATA_PATH + 'BrainCancerDotMat/'
-DOTMAT_DIR = DATA_PATH + 'BrainCancerDotMatNew/'
+DOTMAT_DIR = DATA_PATH + '/BrainCancerDotMatNew/'
 
 #FILE_EXT='.mat'
 FILE_EXT = '.jpg'
@@ -38,10 +38,10 @@ PIC_SQUARE_SIZE = 512   # the most common size
 
 #perc must have shape (nCenters, nClasses): each tensor represents the percentages in which to split each class
 
-PERC = th.tensor([[0.4, 0.3, 0.2],     # Center 1
-                 [0.3, 0.1, 0.4],     # Center 2
-                 [0.2, 0.4, 0.3],     # Center 3
-                 [0.1, 0.2, 0.3]      # Center 4
+PERC = th.tensor([[0.4, 0.3, 0.2, 0.5],     # Center 1
+                 [0.3, 0.1, 0.4, 0.2],     # Center 2
+                 [0.2, 0.4, 0.3, 0.1],     # Center 3
+                 [0.1, 0.2, 0.1, 0.2],     # Center 4
                  ])
 
 LABELS = {
@@ -52,6 +52,7 @@ LABELS = {
         }
 
 NCENTERS = len(PERC)
+NCLASSES = len(LABELS)
 
 # The code was originally written for PERC written in the transposed form
 PERC = th.t(PERC)
@@ -71,4 +72,3 @@ def printv(*args, **kwargs):
 def printd(*args, **kwargs):
     if DEBUG:
         print(*args, **kwargs)
-
