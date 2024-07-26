@@ -11,17 +11,19 @@
 
 source $(pwd)/federatedenv/bin/activate
 
-rm -rf results/
-mkdir results/
 
-# python3 src/build_local_center_dataset.py
+RESULTS=$(grep RESULTS_PATH settings.py | awk -F '=' '{print $2}' | tr -d ' ')
+rm -rf $RESULTS
+mkdir $RESULTS
+
+python3 src/build_local_center_dataset.py
 
 # Set the master node's address
 export MASTER_ADDR=$(scontrol show hostnames $SLURM_JOB_NODELIST | head -n 1)
 export MASTER_PORT=29500
 export OMP_NUM_THREADS=$(($SLURM_CPUS_PER_TASK / $SLURM_GPUS_ON_NODE))
 
-export NITER_FED=$(grep NITER_FED settings.py | awk -F '=' '{print $2}' | tr -d ' ')
+NITER_FED=$(grep NITER_FED settings.py | awk -F '=' '{print $2}' | tr -d ' ')
 
 # Preamble to distinguish the jobs
 echo "****************************************"
@@ -35,7 +37,12 @@ for ((i=0; i<NITER_FED; i++))
 do 
     echo "Starting iteration $i"
 
-    srun --cpu-bind=none torchrun --nnodes=$SLURM_NNODES --nproc_per_node=$SLURM_GPUS_ON_NODE --rdzv_id="${SLURM_JOB_ID}_${i}" --rdzv_backend=c10d --rdzv_endpoint=$MASTER_ADDR:$MASTER_PORT main.py
+    srun --cpu-bind=none torchrun --nnodes=$SLURM_NNODES \
+        --nproc_per_node=$SLURM_GPUS_ON_NODE \
+        --rdzv_id="${SLURM_JOB_ID}_${i}" \
+        --rdzv_backend=c10d \
+        --rdzv_endpoint=$MASTER_ADDR:$MASTER_PORT \
+        main.py
 
     echo "------------------------"
     echo "Iteration $i completed"

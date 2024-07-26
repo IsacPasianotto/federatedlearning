@@ -43,18 +43,21 @@ def main() -> None:
     else:
         raise RuntimeError("No CUDA devices found. This code requires GPU support. Aborting")
 
-    data_file:    str = f"{DATA_PATH}/center_{global_rank}.pt"
-    results_file: str = f"{RESULTS_PATH}/GPU_{local_rank}_Node_{node_rank}.pt"
+    data_file:      str = f"{DATA_PATH}/center_{global_rank}.pt"
+    weights_file:   str = f"{RESULTS_PATH}/weights_{global_rank}.pt"
+    trLosses_file:  str = f"{RESULTS_PATH}/train_losses_{global_rank}.pt"
+    valLosses_file: str = f"{RESULTS_PATH}/val_losses_{global_rank}.pt"
+    testAcc_file:   str = f"{RESULTS_PATH}/test_accuracies_{global_rank}.csv"
 
     data: Dataset = th.load(data_file)
     printd(f"Rank {global_rank} loaded {data_file} having {len(data)} images")
 
     model: BrainClassifier = BrainClassifier().to(device)
 
-    if os.path.isfile(results_file):
+    if os.path.isfile(weights_file):
 
-        printd(f"Found data, importing from {results_file}")
-        net_weights: th.Tensor = th.load(results_file)
+        printd(f"Found data, importing from {weights_file}")
+        net_weights: th.Tensor = th.load(weights_file)
         model.load_state_dict(net_weights)
 
         # Test the model
@@ -69,12 +72,21 @@ def main() -> None:
 
     printd("Training on", device, "for", global_rank, "with", len(train_loader), len(train_loader.dataset), "and", len(val_loader), len(val_loader.dataset))
 
-    net_weights: dict      = train(model, device, train_loader, val_loader) 
-    acc:         float     = test(model, device, test_loader)
+    net_weights, train_losses, val_losses = train(model, device, train_loader, val_loader) 
+    net_weights:  th.Tensor
+    train_losses: th.Tensor
+    val_losses:   th.Tensor
+    
+    updateLosses(trLosses_file, train_losses)
+    updateLosses(valLosses_file, val_losses)
+    
+    acc: float = test(model, device, test_loader)
+    with open(testAcc_file, "a") as f:
+        f.write(f"{acc}\n")
+    
+    th.save(net_weights, weights_file)
+    
     printv(f"Accuracy of the final model {global_rank} from {device}, node {node_rank} on its test set: {acc:.2f}%")
-
-    # Save the results
-    th.save(net_weights, results_file)
     printd(f"Process {global_rank} (Node {node_rank}, GPU {local_rank}) finished training")
 
     if PRINTWEIGHTS:
@@ -84,6 +96,12 @@ def main() -> None:
     dist.barrier()
     dist.destroy_process_group()
 
+
+def updateLosses(losses_file, new_losses):
+    if os.path.exists(losses_file):
+        val_losses_tensor: th.Tensor = th.load(losses_file)
+        new_losses = th.cat((val_losses_tensor, new_losses))
+    th.save(new_losses, losses_file)
+
 if __name__ == '__main__':
     main()
-

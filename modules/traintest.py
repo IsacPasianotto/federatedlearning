@@ -63,8 +63,8 @@ def train(
     start = cuda.Event(enable_timing=True)
     end   = cuda.Event(enable_timing=True)
 
-    train_losses: list[float] = []
-    val_losses:   list[float] = []
+    train_losses: th.tensor = th.empty(nEpochs)
+    val_losses:   th.tensor = th.empty(nEpochs)
 
     for epoch in range(nEpochs):
 
@@ -74,17 +74,17 @@ def train(
         epoch_loss: float = step(model, device, train_data, criterion, optimizer)
         end.record()
 
-        train_losses.append(epoch_loss / len(train_data))
+        train_losses[nEpochs] = epoch_loss / len(train_data)
 
         model.eval()
 
         with th.no_grad():
             val_loss: float = step(model, device, val_data, criterion)
 
-        val_losses.append(val_loss / len(val_data))
-        printv(f"{device}, Epoch {epoch + 1}: Train Loss: {train_losses[-1]:.4f}, Val Loss: {val_losses[-1]:.4f}, Time: {start.elapsed_time(end):.2f}ms")
-
-    return model.state_dict()
+        val_losses[nEpochs] = val_loss / len(val_data)
+        printd(f"{device}, Epoch {epoch + 1}: Train Loss: {train_losses[nEpochs]:.4f}, Val Loss: {val_losses[nEpochs]:.4f}, Time: {start.elapsed_time(end):.2f}ms")
+        
+    return model.state_dict(), train_losses, val_losses
 
 
 def test(
