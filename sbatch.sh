@@ -48,7 +48,7 @@ do
     echo "Iteration $i completed"
     echo "------------------------"
 
-    python3 src/aggregate_weights.py $SLURM_GPUS_ON_NODE $SLURM_NNODES
+    python3 src/aggregate_weights.py
 
     echo "#####################################################"
     echo "     Completed federated learning epoch $((i+1))    "

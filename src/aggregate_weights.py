@@ -22,15 +22,8 @@ def main() -> None:
     printd("Computing aggregation")
     printd("----------------------------")
 
-    if len(sys.argv) != 3:
-        print("Usage: python aggregate_weights.py <nGPUs> <nNodes>")
-        sys.exit(1)
-
-    nGPUs:          int = int(sys.argv[1])
-    nNodes:         int = int(sys.argv[2])
-    nCenters:       int = nGPUs * nNodes
-    net_weights:    list[dict[str, th.Tensor]] = [th.load(f"{RESULTS_PATH}/weights_{i}.pt") for i in range(nCenters)]
-    trainSizes:     list[int]                  = [sum(int(CLASS_SIZES[i] * PERC[i][j] * TRAINSIZE) for i in range(NCLASSES)) for j in range(nCenters)]
+    net_weights:    list[dict[str, th.Tensor]] = [th.load(f"{RESULTS_PATH}/weights_{i}.pt") for i in range(NCENTERS)]
+    trainSizes:     list[int]                  = [sum(int(CLASS_SIZES[i] * PERC[i][j] * TRAINSIZE) for i in range(NCLASSES)) for j in range(NCENTERS)]
     total:          int = sum(trainSizes)
     center_weights: th.Tensor                  = (th.tensor(trainSizes, dtype=th.float) / total)
 
@@ -49,7 +42,7 @@ def main() -> None:
         new_weights[k] = (stacked_tensors * center_weights.view(-1, *([1] * (stacked_tensors.dim() - 1)))).sum(dim=0)
 
     printd("---------------------------------------")
-    for i in range(nCenters):
+    for i in range(NCENTERS):
         printd("Saving in",  f"{RESULTS_PATH}/weights_{i}.pt")
         th.save(new_weights, f"{RESULTS_PATH}/weights_{i}.pt")
     printd("---------------------------------------")
