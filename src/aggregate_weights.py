@@ -29,7 +29,7 @@ def main() -> None:
     nGPUs:          int = int(sys.argv[1])
     nNodes:         int = int(sys.argv[2])
     nCenters:       int = nGPUs * nNodes
-    net_weights:    list[dict[str, th.Tensor]] = [th.load(f"results/weights_{i}.pt") for i in range(nCenters)]
+    net_weights:    list[dict[str, th.Tensor]] = [th.load(f"{RESULTS_PATH}/weights_{i}.pt") for i in range(nCenters)]
     trainSizes:     list[int]                  = [sum(int(CLASS_SIZES[i] * PERC[i][j] * TRAINSIZE) for i in range(NCLASSES)) for j in range(nCenters)]
     total:          int = sum(trainSizes)
     center_weights: th.Tensor                  = (th.tensor(trainSizes, dtype=th.float) / total)
@@ -50,8 +50,8 @@ def main() -> None:
 
     printd("---------------------------------------")
     for i in range(nCenters):
-        printd("Saving in", f"results/weights_{i}.pt")
-        th.save(new_weights, f"results/weights_{i}.pt")
+        printd("Saving in",  f"{RESULTS_PATH}/weights_{i}.pt")
+        th.save(new_weights, f"{RESULTS_PATH}/weights_{i}.pt")
     printd("---------------------------------------")
 
 if __name__ == '__main__':

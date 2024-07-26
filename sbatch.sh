@@ -5,7 +5,7 @@
 #SBATCH --nodes=2
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=32
-#SBATCH --mem=200GB
+#SBATCH --mem=350GB
 #SBATCH --gres=gpu:2
 #SBATCH --time=24:00:00
 
@@ -13,14 +13,13 @@ source $(pwd)/federatedenv/bin/activate
 
 
 RESULTS=$(grep RESULTS_PATH settings.py | awk -F '=' '{print $2}' | tr -d " '")
-rm -rf $RESULTS
-mkdir $RESULTS
+mkdir -p $RESULTS
 
-# python3 src/build_local_center_dataset.py
+python3 src/build_local_center_dataset.py
 
 # Set the master node's address
 export MASTER_ADDR=$(scontrol show hostnames $SLURM_JOB_NODELIST | head -n 1)
-export MASTER_PORT=29500
+export MASTER_PORT=8765
 export OMP_NUM_THREADS=$(($SLURM_CPUS_PER_TASK / $SLURM_GPUS_ON_NODE))
 
 NITER_FED=$(grep NITER_FED settings.py | awk -F '=' '{print $2}' | tr -d ' ')
@@ -32,6 +31,7 @@ echo "DATE:            $(date)"
 echo "Iteation:        $NITER_FED"
 echo "****************************************"
 
+export CUDA_VISIBLE_DEVICES=0,1
 
 for ((i=0; i<NITER_FED; i++))
 do 

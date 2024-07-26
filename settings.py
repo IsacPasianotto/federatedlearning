@@ -9,9 +9,9 @@ from torch import Tensor
 ## Neural Network settings
 ########
 
-BATCH_SIZE:    int   = 128
-N_EPOCHS:      int   = 5
-LEARNING_RATE: float = 1e-4
+BATCH_SIZE:    int   = 64
+N_EPOCHS:      int   = 75
+LEARNING_RATE: float = 1e-5
 WEIGHT_DECAY:  float = 1e-4
 TRAINSIZE:     float = 0.7
 VALSIZE:       float = 0.15
@@ -22,10 +22,10 @@ TESTSIZE:      float = 0.15
 ########
 
 DATA_PATH:    str  = './data'
-RESULTS_PATH: str  = './results'
+RESULTS_PATH: str  = './results/balanced_center_balanced_proportions'
 AUGMENT_DATA: bool = True
-# To generate the initial Dataset:
 
+# To generate the initial Dataset:
 DOWNLOAD_URL:    str = "https://www.kaggle.com/api/v1/datasets/download/masoudnickparvar/brain-tumor-mri-dataset?datasetVersionNumber=1"
 ALLDATA:         str = DATA_PATH + '/BrainCancerDataset.pt'
 ZIP_FILE:        str = DATA_PATH + '/BrainCancer.zip'
@@ -44,15 +44,15 @@ LABELS: dict[str, int] = {
 ## Federated Learning settings
 ########
 
-NITER_FED: int = 5
+NITER_FED: int = 30
 
 # PERC must have shape (nCenters, nClasses): each tensor represents the percentages in which to split each class
 
 PERC: Tensor = th.tensor(
-    [[0.4, 0.3, 0.2, 0.5],      # Center 1
-     [0.3, 0.1, 0.4, 0.2],      # Center 2
-     [0.2, 0.4, 0.3, 0.1],      # Center 3
-     [0.1, 0.2, 0.1, 0.2],      # Center 4
+    [[0.25, 0.25, 0.25, 0.25],      # Center 1
+     [0.25, 0.25, 0.25, 0.25],      # Center 2
+     [0.25, 0.25, 0.25, 0.25],      # Center 3
+     [0.25, 0.25, 0.25, 0.25],      # Center 4
      # ...
     ])
 
@@ -70,7 +70,7 @@ PERC = th.t(PERC)
 ########
 
 VERBOSE:      bool = True
-DEBUG:        bool = True 
+DEBUG:        bool = False
 PRINTWEIGHTS: bool = False
 
 def printw(*args, **kwargs) -> None:

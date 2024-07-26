@@ -32,8 +32,7 @@ def main() -> None:
     global_rank: int = int(os.environ["RANK"])
     local_rank:  int = int(os.environ["LOCAL_RANK"])
     node_rank:   int = global_rank // int(os.environ["LOCAL_WORLD_SIZE"])
-
-
+ 
     if th.cuda.is_available():
         device: th.device = th.device(f"cuda:{local_rank}")
         th.cuda.set_device(device)
