@@ -74,15 +74,15 @@ def train(
         epoch_loss: float = step(model, device, train_data, criterion, optimizer)
         end.record()
 
-        train_losses[nEpochs] = epoch_loss / len(train_data)
+        train_losses[epoch] = epoch_loss / len(train_data)
 
         model.eval()
 
         with th.no_grad():
             val_loss: float = step(model, device, val_data, criterion)
 
-        val_losses[nEpochs] = val_loss / len(val_data)
-        printd(f"{device}, Epoch {epoch + 1}: Train Loss: {train_losses[nEpochs]:.4f}, Val Loss: {val_losses[nEpochs]:.4f}, Time: {start.elapsed_time(end):.2f}ms")
+        val_losses[epoch] = val_loss / len(val_data)
+        printd(f"{device}, Epoch {epoch + 1}: Train Loss: {train_losses[epoch]:.4f}, Val Loss: {val_losses[epoch]:.4f}, Time: {start.elapsed_time(end):.2f}ms")
         
     return model.state_dict(), train_losses, val_losses
 

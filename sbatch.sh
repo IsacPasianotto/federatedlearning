@@ -7,16 +7,16 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=200GB
 #SBATCH --gres=gpu:2
-#SBATCH --time=00:20:00
+#SBATCH --time=24:00:00
 
 source $(pwd)/federatedenv/bin/activate
 
 
-RESULTS=$(grep RESULTS_PATH settings.py | awk -F '=' '{print $2}' | tr -d ' ')
+RESULTS=$(grep RESULTS_PATH settings.py | awk -F '=' '{print $2}' | tr -d " '")
 rm -rf $RESULTS
 mkdir $RESULTS
 
-python3 src/build_local_center_dataset.py
+# python3 src/build_local_center_dataset.py
 
 # Set the master node's address
 export MASTER_ADDR=$(scontrol show hostnames $SLURM_JOB_NODELIST | head -n 1)
