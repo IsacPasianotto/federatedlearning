@@ -143,6 +143,16 @@ class Dataset(Dataset):
         test_size:  int = len(self) - train_size - val_size
         return random_split(self, [train_size, val_size, test_size])
 
+    def getClassSizes(self) -> th.Tensor:
+        """Count the number of images for each class
+
+        Returns
+        -------
+        th.Tensor
+            tensor containing the number of images for each class
+        """
+        return th.bincount(self.labels, minlength=NCLASSES)
+
 
     def splitClasses(
             self,
@@ -179,7 +189,7 @@ class Dataset(Dataset):
 
         for i in range(NCLASSES):
             # Ignore the warning about the 0 length of splits if there are percentages equal to 0
-            #warnings.filterwarnings("ignore", category=UserWarning, message="Length of split.*")
+            warnings.filterwarnings("ignore", category=UserWarning, message="Length of split.*")
 
             data: list = random_split(datasets[i], percentPerClass[i])
             # debugs, triggered only if options.DEBUG is True

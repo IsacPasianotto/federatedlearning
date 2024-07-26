@@ -24,7 +24,7 @@ from settings import *
 def main() -> None:
 
     printd("===========================")
-    printd("start training")
+    printd("Start training")
     printd("===========================")
 
     dist.init_process_group("nccl")

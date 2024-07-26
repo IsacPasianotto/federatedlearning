@@ -2,9 +2,16 @@
 ## Imports
 ########
 
+import os
+import sys
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+# Defined Modules
+sys.path.append(os.path.join(os.path.dirname(__file__), './'))
+sys.path.append(os.path.join(os.path.dirname(__file__), './modules'))
+from settings import NCLASSES
 
 ########
 ## Defined models
@@ -35,10 +42,10 @@ class BrainClassifier(nn.Module):
 
         self.fc_input_size: int = 64 * 64 * 64  # Ensure this calculation matches the output size of the conv layers
 
-        self.fc1: nn.Linear = nn.Linear(self.fc_input_size, 16)
-        self.fc2: nn.Linear = nn.Linear(16, 8)
-        self.fc3: nn.Linear = nn.Linear(8, 4)
-        self.fc4: nn.Linear = nn.Linear(4, 4)  # 4 out classes
+        self.fc1: nn.Linear = nn.Linear(self.fc_input_size, 64)
+        self.fc2: nn.Linear = nn.Linear(64, 32)
+        self.fc3: nn.Linear = nn.Linear(32, 16)
+        self.fc4: nn.Linear = nn.Linear(16, NCLASSES)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass of the model

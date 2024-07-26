@@ -119,11 +119,20 @@ def main() -> None:
     print("-------------------------------------------------")
     dataset = Dataset(*buildImgs_Labs())
 
+    printd("---------------------------------------------")
+    printd("Editing the class sizes in 'settings.py' file")
+    printd("---------------------------------------------")
+    class_sizes:     th.Tensor   = dataset.getClassSizes()
+    int_class_sizes: list[int]   = [int(s) for s in class_sizes]
+    settingsPath:   str          = os.path.join(os.path.dirname(__file__), '../settings.py')
+    command = f"sed -i 's/CLASS_SIZES: list\\[int\\] = \\[.*\\]/CLASS_SIZES: list[int] = {int_class_sizes}/' {settingsPath}"
+    os.system(command)
+
     print("-------------------------------------------------")
     print(f"Saving data to {ALLDATA}")
     print("-------------------------------------------------")
     th.save(dataset, ALLDATA)
-
+    
 
 # Run the main function if the script is called directly
 if __name__=='__main__':

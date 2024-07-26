@@ -2,7 +2,7 @@
 
 <p style="text-align: center;">
 
-[![License](https://img.shields.io/badge/Licese-MIT%20license-mitlicense?style=for-the-badge&logo=MIT&color=%23FF9E0F)](https://github.com/IsacPasianotto/federatedlearning/blob/main/LICENSE)
+[![License](https://img.shields.io/badge/License-MIT%20license-mitlicense?style=for-the-badge&logo=MIT&color=%23FF9E0F)](https://github.com/IsacPasianotto/federatedlearning/blob/main/LICENSE)
 [![Python](https://img.shields.io/badge/Python-Python?style=for-the-badge&logo=Python&logoColor=%23FECC00&color=%233776AB)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-PyTorch?style=for-the-badge&logo=PyTorch&logoColor=white&color=%23EE4C2C)](https://pytorch.org/)
 
@@ -29,10 +29,12 @@ _Authors_:\
 
 # 0. Table of contents
 
+- [Federated learning for brain cancer classification](#federated-learning-for-brain-cancer-classification)
+- [TODO:](#todo)
 - [0. Table of contents](#0-table-of-contents)
 - [1. Description](#1-description)
-    - [1.0 What is the idea behind federated](#10-what-is-the-idea-behind-federated)
-    - [1.1 How this code work](#11-how-this-code-works)
+  - [1.0 What is the idea behind federated](#10-what-is-the-idea-behind-federated)
+  - [1.1 How this code works](#11-how-this-code-works)
 - [2. Getting started](#2-getting-started)
   - [2.0 Prerequisites](#20-prerequisites)
   - [2.1 Generate the dataset:](#21-generate-the-dataset)
@@ -102,7 +104,7 @@ To run the code, you need to:
 
 | **_Variable_**  | **_Type_** | **_Description_**                                                 |
 |:---------------:|:----------:|:------------------------------------------------------------------|
-|  `BATHC_SIZE`   |   `int`    | Batch size for the training                                       |
+|  `BATCH_SIZE`   |   `int`    | Batch size for the training                                       |
 |   `N_EPOCHS`    |   `int`    | Number of epochs the single center will train the model           |
 | `LEARNING_RATE` |  `float`   | Learning rate for the optimizer                                   |
 |   `TRAINSIZE`   |  `float`   | Percentage of the local dataset each center will use for training |

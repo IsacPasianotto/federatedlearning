@@ -29,9 +29,8 @@ def main() -> None:
     nGPUs:          int = int(sys.argv[1])
     nNodes:         int = int(sys.argv[2])
     nCenters:       int = nGPUs * nNodes
-    nClasses:       int = len(CLASS_SIZES)
     net_weights:    list[dict[str, th.Tensor]] = [th.load(f"results/GPU_{i}_Node_{j}.pt") for i in range(nGPUs) for j in range(nNodes)]
-    trainSizes:     list[int]                  = [sum(int(CLASS_SIZES[i] * PERC[i][j] * TRAINSIZE) for i in range(nClasses)) for j in range(nCenters)]
+    trainSizes:     list[int]                  = [sum(int(CLASS_SIZES[i] * PERC[i][j] * TRAINSIZE) for i in range(NCLASSES)) for j in range(nCenters)]
     total:          int = sum(trainSizes)
     center_weights: th.Tensor                  = (th.tensor(trainSizes, dtype=th.float) / total)
 

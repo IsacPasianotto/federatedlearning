@@ -40,8 +40,6 @@ LABELS: dict[str, int] = {
     'pituitary': 3
 }
 
-CLASS_SIZES: list[int] = [708, 1426, 915]
-
 ########
 ## Federated Learning settings
 ########
@@ -60,6 +58,9 @@ PERC: Tensor = th.tensor(
 
 NCENTERS: int = len(PERC)
 NCLASSES: int = len(LABELS)
+
+# Automatically updated by src/data_downloader.py
+CLASS_SIZES: list[int] = [0,0,0,0]
 
 # The code was originally written for PERC written in the transposed form
 PERC = th.t(PERC)
