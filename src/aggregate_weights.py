@@ -22,16 +22,16 @@ def main() -> None:
     printd("Computing aggregation")
     printd("----------------------------")
 
-    net_weights:    list[dict[str, th.Tensor]] = [th.load(f"{RESULTS_PATH}/weights_{i}.pt") for i in range(NCENTERS)]
-    trainSizes:     list[int]                  = [sum(int(CLASS_SIZES[i] * PERC[i][j] * TRAINSIZE) for i in range(NCLASSES)) for j in range(NCENTERS)]
-    total:          int = sum(trainSizes)
-    center_weights: th.Tensor                  = (th.tensor(trainSizes, dtype=th.float) / total)
+    net_weights:    list[dict[str, th.Tensor]] = [th.load(f"{RESULTS_PATH}/weights_{i}.pt") for i in range(N_CENTERS)]
+    train_sizes:    list[int] = [sum(int(CLASS_SIZES[i] * PERC[i][j] * TRAIN_SIZE) for i in range(N_CLASSES)) for j in range(N_CENTERS)]
+    total:          int       = sum(train_sizes)
+    center_weights: th.Tensor = (th.tensor(train_sizes, dtype=th.float) / total)
 
     # move all to cpu becanus they could be in different GPUs
     net_weights = [{ a:b.cpu() for a,b in w.items() } for w in net_weights]
 
     printd("---------------------------------------")
-    printd("Trainsizes for aggregated:", trainSizes)
+    printd("Trainsizes for aggregated:", train_sizes)
     printd("---------------------------------------")
 
     # Perform a deep copy to retrieve just the structure, not the original values
@@ -42,7 +42,7 @@ def main() -> None:
         new_weights[k] = (stacked_tensors * center_weights.view(-1, *([1] * (stacked_tensors.dim() - 1)))).sum(dim=0)
 
     printd("---------------------------------------")
-    for i in range(NCENTERS):
+    for i in range(N_CENTERS):
         printd("Saving in",  f"{RESULTS_PATH}/weights_{i}.pt")
         th.save(new_weights, f"{RESULTS_PATH}/weights_{i}.pt")
     printd("---------------------------------------")

@@ -8,11 +8,10 @@ import sys
 import torch as th
 
 # Defined modules:
-sys.path.append(os.path.join(os.path.dirname(__file__), '../modules'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 
-from settings import ALLDATA, PERC, DATA_PATH, printd
-from dataset import Dataset
+from modules.dataset import BrainDataset
+from settings import ALL_DATA, PERC, DATA_PATH, printd
 
 
 ########
@@ -31,15 +30,15 @@ def main() -> None:
     printd("-----------------------------------------------------")
     printd("Start generating independent datasets for each center")
     printd("-----------------------------------------------------")
-    data:     th.Tensor     = th.load(ALLDATA)
-    datasets: list[Dataset] = data.splitClasses(PERC)
-    newData:  list[Dataset] = [Dataset(files=d) for d in datasets]
+    data:     th.Tensor     = th.load(ALL_DATA)
+    datasets: list[BrainDataset] = data.split_classes(PERC)
+    new_data: list[BrainDataset] = [BrainDataset(files=d) for d in datasets]
 
     printd("-----------------------------------------------------")
-    printd(f"Saving {len(newData)} datasets with {[len(d) for d in newData]} elements")
+    printd(f"Saving {len(new_data)} datasets with {[len(d) for d in new_data]} elements")
     printd("-----------------------------------------------------")
 
-    for i,d in enumerate(newData):
+    for i,d in enumerate(new_data):
         th.save(d, f"{DATA_PATH}/center_{i}.pt")
 
 if __name__ == '__main__':

@@ -19,7 +19,7 @@ from settings import *
 ## Dataset Class Definition
 ########
 
-class Dataset(Dataset):
+class BrainDataset(Dataset):
     """Dataset class for the used data. Extends the torch Dataset class.
 
     Class that represents the dataset used in the project. It is a subclass of the torch Dataset class, and it is used to store the images and labels of the dataset.
@@ -44,8 +44,6 @@ class Dataset(Dataset):
     ValueError
         raised if the sum of the percentages is not 1 for each class
     ValueError
-        raised if the file does not exist, or if the file does not contain a Dataset object
-    ValueError
         raised if the file does not exist
     ValueError
         raised if the file does not contain a Dataset object
@@ -64,7 +62,7 @@ class Dataset(Dataset):
         if files is not None:
             self.images: th.Tensor = th.FloatTensor()
             self.labels: th.Tensor = th.LongTensor()
-            self.importFromFiles(files)
+            self.import_from_files(files)
         elif images is not None and labels is not None:
             self.images: th.Tensor = images.float()
             self.labels: th.Tensor = labels.long()
@@ -100,7 +98,7 @@ class Dataset(Dataset):
 
     def shuffle(self) -> None:
         """Shuffle the dataset"""
-        idx: th.Tensor = th.randperm(self.__len__())
+        idx:         th.Tensor = th.randperm(self.__len__())
         self.images: th.Tensor = self.images[idx]
         self.labels: th.Tensor = self.labels[idx]
 
@@ -108,9 +106,9 @@ class Dataset(Dataset):
 
     def train_val_test_split(
             self,
-            train_percentage: float = TRAINSIZE,
-            val_percentage:   float = VALSIZE,
-            test_percentage:  float = TESTSIZE
+            train_percentage: float = TRAIN_SIZE,
+            val_percentage:   float = VAL_SIZE,
+            test_percentage:  float = TEST_SIZE
     ) -> list:
         """Split the dataset in train, validation and test sets with the given percentages and return them
            as a list of this class objects
@@ -143,7 +141,7 @@ class Dataset(Dataset):
         test_size:  int = len(self) - train_size - val_size
         return random_split(self, [train_size, val_size, test_size])
 
-    def getClassSizes(self) -> th.Tensor:
+    def get_class_sizes(self) -> th.Tensor:
         """Count the number of images for each class
 
         Returns
@@ -151,20 +149,20 @@ class Dataset(Dataset):
         th.Tensor
             tensor containing the number of images for each class
         """
-        return th.bincount(self.labels, minlength=NCLASSES)
+        return th.bincount(self.labels, minlength=N_CLASSES)
 
 
-    def splitClasses(
+    def split_classes(
             self,
-            percentPerClass: list[list[float]],
-            save:            bool = False
+            percent_per_class: list[list[float]],
+            save:              bool = False
     ) -> list:
 
         """Split the dataset into multiple datasets, one for each class and center, and saves them if desired
 
         Parameters
         ----------
-        percentPerClass: (List[List[float]]), required
+        percent_per_class: (List[List[float]]), required
             List of lists of floats representing the percentage of each class to be in each subset
         save: bool, optional
             Decide if to save the created datasets or not. Default is False
@@ -178,22 +176,22 @@ class Dataset(Dataset):
         -------
             List[List[Dataset]]: List of the created datasets, one for each class and center
         """
-        datasets: list = [Subset(self, th.where(self.labels == i)[0]) for i in range(NCLASSES)]
+        datasets: list = [Subset(self, th.where(self.labels == i)[0]) for i in range(N_CLASSES)]
 
-        if len(percentPerClass) != NCLASSES:
-            raise ValueError(f"The number of percentages for each center should be equal to the number of classes ({NCLASSES}), fill with zeroes if you don't want to consider some classes")
-        if not th.all(th.isclose(th.sum(percentPerClass, dim=1), th.ones(1))):
-            raise ValueError(f"The sum of the percentages of each class should be 1, but got {th.sum(percentPerClass, dim=1)}")
+        if len(percent_per_class) != N_CLASSES:
+            raise ValueError(f"The number of percentages for each center should be equal to the number of classes ({N_CLASSES}), fill with zeroes if you don't want to consider some classes")
+        if not th.all(th.isclose(th.sum(percent_per_class, dim=1), th.ones(1))):
+            raise ValueError(f"The sum of the percentages of each class should be 1, but got {th.sum(percent_per_class, dim=1)}")
 
-        output: np.ndarray = np.empty((NCLASSES, NCENTERS), dtype=object)
+        output: np.ndarray = np.empty((N_CLASSES, N_CENTERS), dtype=object)
 
-        for i in range(NCLASSES):
+        for i in range(N_CLASSES):
             # Ignore the warning about the 0 length of splits if there are percentages equal to 0
             warnings.filterwarnings("ignore", category=UserWarning, message="Length of split.*")
 
-            data: list = random_split(datasets[i], percentPerClass[i])
-            # debugs, triggered only if options.DEBUG is True
-            printd(percentPerClass[i])
+            data: list = random_split(datasets[i], percent_per_class[i])
+            # debugs, triggered only if settings.DEBUG is True
+            printd(percent_per_class[i])
             printd(len(datasets[i]), [len(d) for d in data])
 
             for j, subset in enumerate(data):
@@ -204,17 +202,17 @@ class Dataset(Dataset):
                     labels: th.Tensor = th.tensor([subset.dataset[idx][1] for idx in subset.indices])
 
                     # Create a new dataset
-                    newData: Dataset = Dataset(images, labels)
-                    output[i,j] = newData
+                    new_data: Dataset = Dataset(images, labels)
+                    output[i,j] = new_data
 
                     if save:
                         label: str = self.labelStr(i)
                         os.makedirs(f"data/{label}", exist_ok=True)
-                        th.save(newData, f"data/{label}/{label}{int(percentPerClass[i][j]*100)}_{j}.pt")
+                        th.save(new_data, f"data/{label}/{label}{int(percent_per_class[i][j]*100)}_{j}.pt")
 
         return output.T
 
-    def importFromFiles(
+    def import_from_files(
             self,
             files: list
     ) -> None:
@@ -259,8 +257,7 @@ class Dataset(Dataset):
         self.labels: th.Tensor = th.cat(labs)
         self.shuffle()
 
-        printd("nImgs:", len(self.images))  #debug
-
+        printd("nImgs:", len(self.images))
 
 
 
@@ -287,7 +284,7 @@ def build_Dataloader(
     """
     return DataLoader(data, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
 
-def buildDataloaders(data: Dataset) -> tuple:
+def build_Dataloaders(data: Dataset) -> tuple:
     """ Split the given data in train, val, test sets and build their dataloaders
 
     Parameters

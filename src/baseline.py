@@ -1,40 +1,50 @@
+# Downloaded Modules
 import os
 import sys
 import torch as th
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 # Defined modules:
-from settings import *
-from modules.dataset import Dataset, buildDataloaders
-from modules.networks import BrainClassifier
-from modules.traintest import *
+sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 
-def main():
+from modules.dataset import BrainDataset, build_Dataloaders
+from modules.networks import BrainClassifier
+from modules.traintest import train, test
+from settings import ALL_DATA, BASELINE_PATH
+
+def main() -> None:
     print("Starting baseline")
-    device = th.cuda.current_device()
+    device: th.device = th.cuda.current_device()
     th.cuda.set_device(device)
     
-    data = th.load("data/BrainCancerDataset.pt")
+    data: BrainDataset = th.load(ALL_DATA)
     print("Data loaded")
-    model = BrainClassifier().to(device)
-    train_loader, val_loader, test_loader = buildDataloaders(data)
+    model: BrainClassifier = BrainClassifier().to(device)
+    train_loader, val_loader, test_loader = build_Dataloaders(data)
+    train_loader: th.utils.data.DataLoader
+    val_loader:   th.utils.data.DataLoader
+    test_loader:  th.utils.data.Data
+    
     print("Starting train")
     nEpochs = 150
-    net_weights, train_losses, val_losses = train(model, device, train_loader, val_loader, nEpochs=nEpochs) 
+    net_weights, train_losses, val_losses = train(model, device, train_loader, val_loader, n_epochs=nEpochs)
+    net_weights:  dict[str, th.Tensor]
+    train_losses: th.Tensor
+    val_losses:   th.Tensor
+    
     print("Starting test")
-    acc = test(model, device, test_loader)
+    acc: float = test(model, device, test_loader)
     print("Accuracy:", acc)
     
-    resultsPath = "results/baselineResults/"
-    os.mkdirs(resultsPath, exist_ok=True)
+    os.mkdirs(BASELINE_PATH, exist_ok=True)
     
-    with open(resultsPath + "train_losses.csv", "w") as f:
+    with open(BASELINE_PATH + "train_losses.csv", "w") as f:
         for loss in train_losses:
             f.write(loss)
     
-    with open(resultsPath + "val_losses.csv", "w") as f:
+    with open(BASELINE_PATH + "val_losses.csv", "w") as f:
         for loss in val_losses:
             f.write(loss)
+
 
 if __name__ == '__main__':
     main()

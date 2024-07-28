@@ -25,7 +25,7 @@ def train(
         device:       th.device,
         train_data:   th.utils.data.DataLoader,
         val_data:     th.utils.data.DataLoader,
-        nEpochs:      int   = N_EPOCHS,
+        n_epochs:     int   = N_EPOCHS,
         lr:           float = LEARNING_RATE,
         weight_decay: float = WEIGHT_DECAY
     ) -> th.Tensor:
@@ -63,10 +63,10 @@ def train(
     start = cuda.Event(enable_timing=True)
     end   = cuda.Event(enable_timing=True)
 
-    train_losses: th.tensor = th.empty(nEpochs)
-    val_losses:   th.tensor = th.empty(nEpochs)
+    train_losses: th.tensor = th.empty(n_epochs)
+    val_losses:   th.tensor = th.empty(n_epochs)
 
-    for epoch in range(nEpochs):
+    for epoch in range(n_epochs):
 
         model.train()
 
@@ -88,7 +88,7 @@ def train(
 
 
 def test(
-        model: nn.Module,
+        model:  nn.Module,
         device: th.device,
         data: th.utils.data.DataLoader
    ) -> float:
@@ -162,4 +162,3 @@ def step(model, device, data, criterion, optimizer=None):
         total_loss += loss.item()
 
     return total_loss
-

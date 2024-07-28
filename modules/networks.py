@@ -4,14 +4,14 @@
 
 import os
 import sys
-import torch
+import torch as th
 import torch.nn as nn
 import torch.nn.functional as F
 
 # Defined Modules
-sys.path.append(os.path.join(os.path.dirname(__file__), './'))
-sys.path.append(os.path.join(os.path.dirname(__file__), './modules'))
-from settings import NCLASSES
+sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
+
+from settings import N_CLASSES
 
 ########
 ## Defined models
@@ -45,9 +45,9 @@ class BrainClassifier(nn.Module):
         self.fc1: nn.Linear = nn.Linear(self.fc_input_size, 64)
         self.fc2: nn.Linear = nn.Linear(64, 32)
         self.fc3: nn.Linear = nn.Linear(32, 16)
-        self.fc4: nn.Linear = nn.Linear(16, NCLASSES)
+        self.fc4: nn.Linear = nn.Linear(16, N_CLASSES)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: th.Tensor) -> th.Tensor:
         """Forward pass of the model
 
         Parameters
@@ -97,7 +97,7 @@ def print_layer_sums(model: nn.Module) -> None:
         param_sum = param.sum().item()
         print(f"{name}: Sum of values = {param_sum}")
 
-def printParams(model: nn.Module) -> None:
+def print_params(model: nn.Module) -> None:
     """
     Print the sum of all parameters of the model and the sum of all parameters of each layer.
     Used for debugging purposes.

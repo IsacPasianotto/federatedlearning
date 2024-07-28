@@ -4,17 +4,13 @@
 
 # Downloaded Modules
 import os
-import sys
 import torch as th
 import torch.distributed as dist
 
 # Defined Modules
-sys.path.append(os.path.join(os.path.dirname(__file__), './'))
-sys.path.append(os.path.join(os.path.dirname(__file__), './modules'))
-
-from dataset import *
-from networks import BrainClassifier, printParams
-from traintest import train, test
+from modules.dataset import *
+from modules.networks import BrainClassifier, print_params
+from modules.traintest import train, test
 from settings import *
 
 ####
@@ -42,12 +38,12 @@ def main() -> None:
     else:
         raise RuntimeError("No CUDA devices found. This code requires GPU support. Aborting")
 
-    data_file:      str = f"{DATA_PATH}/center_{global_rank}.pt"
-    weights_file:   str = f"{RESULTS_PATH}/weights_{global_rank}.pt"
-    trLosses_file:  str = f"{RESULTS_PATH}/train_losses_{global_rank}.pt"
-    valLosses_file: str = f"{RESULTS_PATH}/val_losses_{global_rank}.pt"
-    testAcc_file:   str = f"{RESULTS_PATH}/test_accuracies_{global_rank}.csv"
-    aggrAcc_file:   str = f"{RESULTS_PATH}/aggregated_accuracies_{global_rank}.csv"
+    data_file:         str = f"{DATA_PATH}/center_{global_rank}.pt"
+    weights_file:      str = f"{RESULTS_PATH}/weights_{global_rank}.pt"
+    train_losses_file: str = f"{RESULTS_PATH}/train_losses_{global_rank}.pt"
+    val_losses_file:   str = f"{RESULTS_PATH}/val_losses_{global_rank}.pt"
+    testAcc_file:      str = f"{RESULTS_PATH}/test_accuracies_{global_rank}.csv"
+    aggrAcc_file:      str = f"{RESULTS_PATH}/aggregated_accuracies_{global_rank}.csv"
 
     data: Dataset = th.load(data_file)
     printd(f"Rank {global_rank} loaded {data_file} having {len(data)} images")
@@ -67,7 +63,7 @@ def main() -> None:
             f.write(f"{acc}\n")
 
 
-    train_loader, val_loader, test_loader = buildDataloaders(data)
+    train_loader, val_loader, test_loader = build_Dataloaders(data)
     train_loader: th.utils.data.DataLoader
     val_loader:   th.utils.data.DataLoader
     test_loader:  th.utils.data.DataLoader
@@ -75,12 +71,12 @@ def main() -> None:
     printd("Training on", device, "for", global_rank, "with", len(train_loader), len(train_loader.dataset), "and", len(val_loader), len(val_loader.dataset))
 
     net_weights, train_losses, val_losses = train(model, device, train_loader, val_loader) 
-    net_weights:  th.Tensor
+    net_weights:  dict[str, th.Tensor]
     train_losses: th.Tensor
     val_losses:   th.Tensor
     
-    updateLosses(trLosses_file, train_losses)
-    updateLosses(valLosses_file, val_losses)
+    update_losses(train_losses_file, train_losses)
+    update_losses(val_losses_file, val_losses)
     
     acc: float = test(model, device, test_loader)
     with open(testAcc_file, "a") as f:
@@ -91,15 +87,15 @@ def main() -> None:
     printv(f"Accuracy of the final model {global_rank} from {device}, node {node_rank} on its test set: {acc:.2f}%")
     printd(f"Process {global_rank} (Node {node_rank}, GPU {local_rank}) finished training")
 
-    if PRINTWEIGHTS:
-        printParams(model)
+    if PRINT_WEIGHTS:
+        print_params(model)
 
     # needed sync to avoid hanging processes
     dist.barrier()
     dist.destroy_process_group()
 
 
-def updateLosses(losses_file, new_losses):
+def update_losses(losses_file, new_losses):
     if os.path.exists(losses_file):
         val_losses_tensor: th.Tensor = th.load(losses_file)
         new_losses = th.cat((val_losses_tensor, new_losses))

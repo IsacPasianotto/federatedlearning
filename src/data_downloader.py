@@ -10,17 +10,16 @@ import torchvision.transforms as transforms
 import zipfile
 
 # Defined modules:
-sys.path.append(os.path.join(os.path.dirname(__file__), '../modules'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 
+from modules.dataset import BrainDataset
 from settings import *
-from dataset import Dataset
 
 ########
 ## Auxiliary functions
 ########
 
-def exploreDir(
+def explore_dir(
         dir:     str,
         fileExt: str
     ) -> list[str]:
@@ -39,12 +38,12 @@ def exploreDir(
 # TODO --> Rename with something like "build_img_and_labds".
 #          In this way it seems that it builds only the labels
 
-def buildImgs_Labs(
+def build_imgsLabels(
         augment: bool = AUGMENT_DATA
     ) -> tuple[th.Tensor, th.Tensor]:
     """Build the images and labels tensors from the dataset.
 
-       If augment is True, it will also augment the images duplicating them and applying some transformations to the copies.
+       If augment is True, it will also augment the images by duplicating them and applying some transformations to the copies.
 
     Parameters
     ----------
@@ -53,30 +52,31 @@ def buildImgs_Labs(
     """
 
     images:      list[th.Tensor] = []
-    labels:      list[th.Tensor]    = []
-    image_files: list[str]                   = exploreDir(EXTRACT_DIR, FILE_EXT)
+    labels:      list[th.Tensor] = []
+    image_files: list[str]       = explore_dir(EXTRACT_DIR, FILE_EXT)
+    img_size:    tuple[int, int] = (PIC_SIZE, PIC_SIZE)
 
     # Original pictures are only uniformed in size and transformed to tensors
     transform: transforms.Compose = transforms.Compose([
-        transforms.Resize((PIC_SQUARE_SIZE, PIC_SQUARE_SIZE)),
+        transforms.Resize(img_size),
         transforms.ToTensor()
     ])
 
     if augment:
         transform_augmented: transforms.Compose = transforms.Compose([
-            transforms.Resize((PIC_SQUARE_SIZE, PIC_SQUARE_SIZE)),    # Resize images to a fixed size
+            transforms.Resize(img_size),                              # Resize images to a fixed size
             transforms.RandomHorizontalFlip(),                        # Apply random horizontal flip
             transforms.RandomVerticalFlip(),                          # Apply random vertical flip
             # transforms.RandomEqualize(),                            # Apply random equalization -> substitute with ColorJitter
             transforms.RandomRotation(15),                            # Apply random rotations
             transforms.ToTensor(),                                    # Convert images to PyTorch tensors
-            transforms.ColorJitter(brightness=0.1, contrast=0.2, saturation=0.1, hue=0.3),  # Apply random color jitter (callable on tensors only)
+            transforms.ColorJitter(brightness=0.1, contrast=0.2, saturation=0.1, hue=0.3), # Apply random color jitter (callable on tensors only)
         ])
 
 
     for image_file in image_files:
         image: Image = Image.open(image_file).convert('RGB')
-        label: int = LABELS[image_file.split('/')[-2]]
+        label: int   = LABELS[image_file.split('/')[-2]]
 
         images.append(transform(image))
         labels.append(label)
@@ -91,10 +91,10 @@ def buildImgs_Labs(
 
     return images, labels
 
+
 ########
 ## Main function
 ########
-
 
 def main() -> None:
 
@@ -115,26 +115,25 @@ def main() -> None:
             zip_ref.extractall(EXTRACT_DIR)
 
     print("-------------------------------------------------")
-    print(f"Resizing all the images to the same size: {PIC_SQUARE_SIZE}x{PIC_SQUARE_SIZE}")
+    print(f"Resizing all the images to the same size: {PIC_SIZE}x{PIC_SIZE}")
     print("-------------------------------------------------")
-    dataset = Dataset(*buildImgs_Labs())
+    dataset = BrainDataset(*build_imgsLabels())
 
     printd("---------------------------------------------")
     printd("Editing the class sizes in 'settings.py' file")
     printd("---------------------------------------------")
-    class_sizes:     th.Tensor   = dataset.getClassSizes()
+    class_sizes:     th.Tensor   = dataset.get_class_sizes()
     int_class_sizes: list[int]   = [int(s) for s in class_sizes]
     settingsPath:   str          = os.path.join(os.path.dirname(__file__), '../settings.py')
     command = f"sed -i 's/CLASS_SIZES: list\\[int\\] = \\[.*\\]/CLASS_SIZES: list[int] = {int_class_sizes}/' {settingsPath}"
     os.system(command)
 
     print("-------------------------------------------------")
-    print(f"Saving data to {ALLDATA}")
+    print(f"Saving data to {ALL_DATA}")
     print("-------------------------------------------------")
-    th.save(dataset, ALLDATA)
+    th.save(dataset, ALL_DATA)
     
 
 # Run the main function if the script is called directly
 if __name__=='__main__':
     main()
-
