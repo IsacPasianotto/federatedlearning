@@ -47,6 +47,7 @@ def main() -> None:
     trLosses_file:  str = f"{RESULTS_PATH}/train_losses_{global_rank}.pt"
     valLosses_file: str = f"{RESULTS_PATH}/val_losses_{global_rank}.pt"
     testAcc_file:   str = f"{RESULTS_PATH}/test_accuracies_{global_rank}.csv"
+    aggrAcc_file:   str = f"{RESULTS_PATH}/aggregated_accuracies_{global_rank}.csv"
 
     data: Dataset = th.load(data_file)
     printd(f"Rank {global_rank} loaded {data_file} having {len(data)} images")
@@ -62,6 +63,8 @@ def main() -> None:
         # Test the model
         acc: float = test(model, device, build_Dataloader(data, BATCH_SIZE))
         printv(f'Accuracy of the aggregated model on center {global_rank}: {acc:.2f}%')
+        with open(aggrAcc_file, "a") as f:
+            f.write(f"{acc}\n")
 
 
     train_loader, val_loader, test_loader = buildDataloaders(data)
