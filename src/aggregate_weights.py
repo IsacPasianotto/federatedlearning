@@ -23,15 +23,15 @@ def main() -> None:
     printd("----------------------------")
 
     net_weights:    list[dict[str, th.Tensor]] = [th.load(f"{RESULTS_PATH}/weights_{i}.pt") for i in range(N_CENTERS)]
-    train_sizes:    list[int] = [sum(int(CLASS_SIZES[i] * PERC[i][j] * TRAIN_SIZE) for i in range(N_CLASSES)) for j in range(N_CENTERS)]
-    total:          int       = sum(train_sizes)
-    center_weights: th.Tensor = (th.tensor(train_sizes, dtype=th.float) / total)
+    center_sizes:   list[int] = [sum(int(class_size*center_class_percent) for class_size, center_class_percent in zip(CLASS_SIZES, center_percents)) for center_percents in PERC]
+    total:          int       = sum(center_sizes)
+    center_weights: th.Tensor = (th.tensor(center_sizes, dtype=th.float) / total)
 
     # move all to cpu becanus they could be in different GPUs
     net_weights = [{ a:b.cpu() for a,b in w.items() } for w in net_weights]
 
     printd("---------------------------------------")
-    printd("Trainsizes for aggregated:", train_sizes)
+    printd("Sizes for aggregated:", center_sizes)
     printd("---------------------------------------")
 
     # Perform a deep copy to retrieve just the structure, not the original values

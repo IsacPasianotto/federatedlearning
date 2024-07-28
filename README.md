@@ -31,9 +31,10 @@ _Authors_:\
 - [Federated learning for brain cancer classification](#federated-learning-for-brain-cancer-classification)
 - [TODO:](#todo)
 - [0. Table of contents](#0-table-of-contents)
-- [1. Description](#1-description)
-  - [1.0 What is the idea behind federated](#10-what-is-the-idea-behind-federated)
-  - [1.1 How this code works](#11-how-this-code-works)
+- [1. Introduction](#1-introduction)
+  - [1.0 The idea behind federated learning](#10-the-idea-behind-federated-learning)
+  - [1.1 The dataset](#11-the-dataset)
+  - [1.2 The model and the training](#12-the-model-and-the-training)
 - [2. Getting started](#2-getting-started)
   - [2.0 Prerequisites](#20-prerequisites)
   - [2.1 Generate the dataset:](#21-generate-the-dataset)
@@ -46,17 +47,34 @@ _Authors_:\
 - [5. References:](#5-references)
 
 
-# 1. Description
+# 1. Introduction
 
-## 1.0 What is the idea behind federated
+## 1.0 The idea behind federated learning
 
-## 1.1 How this code works
+Federated learning is a machine learning approach that allows multiple entities to collaboratively train a model without sharing their data. This is not only useful to speedup the training process (since it can be therefore carried on in a distributed scenario), but mainly to protect the privacy of the data by avoiding data sharing. A tipical scenario in which federated learning shows its potential is the medical field, where the data is sensitive and the privacy of the patients must be preserved: for example, different hospitals, each with its own dataset, can collaborate to train a model that can be used to predict a certain disease, without sharing the data used for the training.
 
-- Structure of this repository
-- Loop in the sbatch script
+Going more in detail, the federated learning algorithm works as follows:
 
+1. All centers (hospitals) have their own dataset, which is not shared with the others.
+2. All centers agree on a model architecture and a loss function and train this same model on their own dataset.
+3. The centers send the weights of the learned model to a central server, which aggregates them in some way (e.g. by averaging them).
+4. The central server sends the aggregated weights back to the centers, which start again the training process with the new weights.
 
-TODO --> fill this section 
+This process is repeated for a certain number of iterations, and at the end, the central server has a model that has been trained on all the datasets, without actually having access to the data itself.
+
+This approach has several advantages and can be performed on several different scenarios, not necessarily involving similar datasets. For example:
+- datasets can have different **size**: some centers may be larger than other, therefore having more data to train the model
+- datasets can have different **distributions**: some centers may be specialized on a certain type of disease, therefore having many more samples of that class
+
+## 1.1 The dataset
+
+In this repository, we present a federated learning algorithm applied to the classification of brain' Magnetic Resonance images to diagnose some typologies of cancer. The dataset used is the [Brain Tumor MRI dataset](https://www.kaggle.com/datasets/masoudnickparvar/brain-tumor-mri-dataset?resource=download), openly available on Kaggle. The dataset contains ~7000 images of brain MRI, divided in 4 more or less equally represented classes: glioma, meningioma, pituitary and no tumor. The goal is to develop a model to classify these images, split the dataset among multiple different centers, let them train the model on their own data, aggregate the weights to obtain a final model and evaluate its performance.
+
+## 1.2 The model and the training
+
+The model used in this repository is a simple Convolutional Neural Network with 3 convolutional layers and 4 fully connected layers. Adam optimizer and cross entropy loss are used to train the model.
+
+The model has been trained on multi-node, multi-GPU clusters (Leonardo and Orfeo), using the PyTorch library and `torchrun`: each center uses a different GPU to train the model, and the central server aggregates the weights of the model at the end of each iteration.
 
 # 2. Getting started
 
