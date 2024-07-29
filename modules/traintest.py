@@ -162,3 +162,82 @@ def step(model, device, data, criterion, optimizer=None):
         total_loss += loss.item()
 
     return total_loss
+
+
+# Different function for the code in src/baseline.py because we want to have the accuracy of the model on the
+# test set at each epoch, not just at the end of training
+
+def train_and_test(
+        model:        nn.Module,
+        device:       th.device,
+        train_data:   th.utils.data.DataLoader,
+        val_data:     th.utils.data.DataLoader,
+        n_epochs:     int                      = N_EPOCHS,
+        lr:           float                    = LEARNING_RATE,
+        weight_decay: float                    = WEIGHT_DECAY,
+        test_data:    th.utils.data.DataLoader = None
+ ) -> list[dict, th.Tensor, th.Tensor, th.Tensor]:
+    """ Train the model on the given dataset and test it on the test set at each epoch
+
+    Parameters
+    ----------
+    model : nn.Module
+        The model to be trained
+    device : th.device
+        The device to be used
+    train_data : th.utils.data.DataLoader
+        The training data
+    val_data : th.utils.data.DataLoader
+        The validation data
+    n_epochs : int, optional
+        The number of epochs to train for, by default N_EPOCHS
+    lr : float, optional
+        The learning rate to use for optimization, by default LEARNING_RATE
+    weight_decay : float, optional
+        The weight decay to use for optimization, by default WEIGHT_DECAY
+    test_data : th.utils.data.DataLoader, optional
+        The test data to use, by default None
+
+    Returns
+    -------
+    list[dict, th.Tensor, th.Tensor, th.Tensor]
+        The state dictionary of the model after training, the training losses, the validation losses, and the test accuracies
+    """
+
+    cuda.set_device(device)
+
+    criterion: nn.Module       = nn.CrossEntropyLoss()
+    optimizer: optim.Optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+
+    # Create CUDA events for timing
+    start = cuda.Event(enable_timing=True)
+    end =   cuda.Event(enable_timing=True)
+
+    train_losses: th.tensor = th.empty(n_epochs)
+    val_losses:   th.tensor = th.empty(n_epochs)
+    accuracies:   th.tensor = th.empty(n_epochs)
+
+    for epoch in range(n_epochs):
+
+        ## ---  Train  --- ##
+        model.train()
+
+        start.record()
+        epoch_loss: float = step(model, device, train_data, criterion, optimizer)
+        end.record()
+
+        train_losses[epoch] = epoch_loss / len(train_data)
+
+        ## ---  Validate and Test  --- ##
+        model.eval()
+
+        with th.no_grad():
+            val_loss: float = step(model, device, val_data, criterion)
+            acc: float = test(model, device, test_data)
+
+        val_losses[epoch] = val_loss / len(val_data)
+        accuracies[epoch] = acc
+
+        printd(f"{device}, Epoch {epoch + 1}: Train Loss: {train_losses[epoch]:.4f}, Val Loss: {val_losses[epoch]:.4f}, Test Acc: {accuracies[epoch]:.2f}, Time: {start.elapsed_time(end):.2f}ms")
+
+    return model.state_dict(), train_losses, val_losses, accuracies

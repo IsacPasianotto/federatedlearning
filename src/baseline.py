@@ -8,7 +8,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 
 from modules.dataset import BrainDataset, build_Dataloaders
 from modules.networks import BrainClassifier
-from modules.traintest import train, test
+from modules.traintest import train_and_test
 from settings import ALL_DATA, BASELINE_PATH
 
 def main() -> None:
@@ -26,14 +26,13 @@ def main() -> None:
     
     print("Starting train")
     nEpochs = 150
-    net_weights, train_losses, val_losses = train(model, device, train_loader, val_loader, n_epochs=nEpochs)
+    net_weights, train_losses, val_losses, accuracies = train_and_test(model, device, train_loader, val_loader, n_epochs=nEpochs, test_data=test_loader)
     net_weights:  dict[str, th.Tensor]
     train_losses: th.Tensor
     val_losses:   th.Tensor
+    accuracies:   th.Tensor
     
     print("Starting test")
-    acc: float = test(model, device, test_loader)
-    print("Accuracy:", acc)
     
     os.mkdirs(BASELINE_PATH, exist_ok=True)
     
@@ -45,6 +44,9 @@ def main() -> None:
         for loss in val_losses:
             f.write(loss)
 
+    with open(BASELINE_PATH + "accuracies.csv", "w") as f:
+        for acc in accuracies:
+            f.write(acc)
 
 if __name__ == '__main__':
     main()
