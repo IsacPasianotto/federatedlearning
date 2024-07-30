@@ -13,9 +13,9 @@ BATCH_SIZE:    int   = 64
 N_EPOCHS:      int   = 50
 LEARNING_RATE: float = 1e-5
 WEIGHT_DECAY:  float = 1e-4
-TRAINSIZE:     float = 0.7
-VALSIZE:       float = 0.15
-TESTSIZE:      float = 0.15
+TRAIN_SIZE:     float = 0.7
+VAL_SIZE:       float = 0.15
+TEST_SIZE:      float = 0.15
 
 ########
 ## Data settings
@@ -27,7 +27,7 @@ AUGMENT_DATA: bool = True
 
 # To generate the initial Dataset:
 DOWNLOAD_URL:    str = "https://www.kaggle.com/api/v1/datasets/download/masoudnickparvar/brain-tumor-mri-dataset?datasetVersionNumber=1"
-ALLDATA:         str = DATA_PATH + '/BrainCancerDataset.pt'
+ALL_DATA:         str = DATA_PATH + '/BrainCancerDataset.pt'
 ZIP_FILE:        str = DATA_PATH + '/BrainCancer.zip'
 EXTRACT_DIR:     str = DATA_PATH + '/BrainCancerRawData/'
 FILE_EXT:        str = '.jpg'
@@ -44,7 +44,7 @@ LABELS: dict[str, int] = {
 ## Federated Learning settings
 ########
 
-NITER_FED: int = 30
+N_ITER_FED: int = 30
 
 # PERC must have shape (nCenters, nClasses): each tensor represents the percentages in which to split each class
 
@@ -55,8 +55,8 @@ PERC: Tensor = th.tensor(
      [0.15, 0.25, 0.05, 0.05],          # Center 4
     ])
 
-NCENTERS: int = len(PERC)
-NCLASSES: int = len(LABELS)
+N_CENTERS: int = len(PERC)
+N_CLASSES: int = len(LABELS)
 
 #Automatically updated by src/data_downloader.py
 CLASS_SIZES: list[int] = [4000, 3290, 3242, 3514]
@@ -70,13 +70,13 @@ PERC = th.t(PERC)
 
 VERBOSE:      bool = True
 DEBUG:        bool = False
-PRINTWEIGHTS: bool = False
+PRINT_WEIGHTS: bool = False
 
 def printw(*args, **kwargs) -> None:
     """
     Print the weights of the model if PRINTWEIGHTS setting is True
     """
-    if PRINTWEIGHTS:
+    if PRINT_WEIGHTS:
         print(*args, **kwargs, flush=True)
 
 def printv(*args, **kwargs) -> None:

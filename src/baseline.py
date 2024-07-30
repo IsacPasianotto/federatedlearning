@@ -19,14 +19,14 @@ def main() -> None:
     data: BrainDataset = th.load(ALL_DATA)
     print("Data loaded")
     model: BrainClassifier = BrainClassifier().to(device)
-    train_loader, val_loader, test_loader = build_Dataloaders(data)
+    train_loader, val_loader, test_loader = build_Dataloaders(data, 0.8, 0.2, 0.0)
     train_loader: th.utils.data.DataLoader
     val_loader:   th.utils.data.DataLoader
     test_loader:  th.utils.data.Data
     
     print("Starting train")
-    nEpochs = 150
-    net_weights, train_losses, val_losses, accuracies = train_and_test(model, device, train_loader, val_loader, n_epochs=nEpochs, test_data=test_loader)
+    nEpochs = 300
+    net_weights, train_losses, val_losses, accuracies = train_and_test(model, device, train_loader, val_loader, n_epochs=nEpochs, lr=1e-5, weight_decay=0)
     net_weights:  dict[str, th.Tensor]
     train_losses: th.Tensor
     val_losses:   th.Tensor
@@ -34,19 +34,22 @@ def main() -> None:
     
     print("Starting test")
     
-    os.mkdirs(BASELINE_PATH, exist_ok=True)
+    #os.mkdirs(BASELINE_PATH, exist_ok=True)
     
     with open(BASELINE_PATH + "train_losses.csv", "w") as f:
         for loss in train_losses:
-            f.write(loss)
+            f.write(str(float(loss)))
+            f.write("\n")
     
     with open(BASELINE_PATH + "val_losses.csv", "w") as f:
         for loss in val_losses:
-            f.write(loss)
+            f.write(str(float(loss)))
+            f.write("\n")
 
     with open(BASELINE_PATH + "accuracies.csv", "w") as f:
         for acc in accuracies:
-            f.write(acc)
+            f.write(str(float(acc)))
+            f.write("\n")
 
 if __name__ == '__main__':
     main()

@@ -6,6 +6,7 @@
 import os
 import torch as th
 import torch.distributed as dist
+import datetime
 
 # Defined Modules
 from modules.dataset import *
@@ -38,17 +39,24 @@ def main() -> None:
     else:
         raise RuntimeError("No CUDA devices found. This code requires GPU support. Aborting")
 
-    data_file:         str = f"{DATA_PATH}/center_{global_rank}.pt"
+    train_data_file:   str = f"{DATA_PATH}/center_{global_rank}.pt"
+    test_data_file:    str = f"{DATA_PATH}/center_{global_rank}_test.pt"
     weights_file:      str = f"{RESULTS_PATH}/weights_{global_rank}.pt"
     train_losses_file: str = f"{RESULTS_PATH}/train_losses_{global_rank}.pt"
     val_losses_file:   str = f"{RESULTS_PATH}/val_losses_{global_rank}.pt"
     testAcc_file:      str = f"{RESULTS_PATH}/test_accuracies_{global_rank}.csv"
     aggrAcc_file:      str = f"{RESULTS_PATH}/aggregated_accuracies_{global_rank}.csv"
 
-    data: Dataset = th.load(data_file)
-    printd(f"Rank {global_rank} loaded {data_file} having {len(data)} images")
+    train_data: Dataset = th.load(train_data_file)
+    test_data:  Dataset = th.load(test_data_file)
+    printd(f"Rank {global_rank} loaded {train_data_file}, {test_data_file} having {len(train_data)} train images and {len(test_data)} test images")
 
     model: BrainClassifier = BrainClassifier().to(device)
+
+    train_loader, val_loader = build_Dataloaders(train_data)
+    train_loader: th.utils.data.DataLoader
+    val_loader:   th.utils.data.DataLoader
+    test_loader:  th.utils.data.DataLoader = build_Dataloader(test_data)
 
     if os.path.isfile(weights_file):
 
@@ -57,17 +65,11 @@ def main() -> None:
         model.load_state_dict(net_weights)
 
         # Test the model
-        acc: float = test(model, device, build_Dataloader(data, BATCH_SIZE))
+        acc: float = test(model, device, test_loader)
         printv(f'Accuracy of the aggregated model on center {global_rank}: {acc:.2f}%')
         with open(aggrAcc_file, "a") as f:
             f.write(f"{acc}\n")
-
-
-    train_loader, val_loader, test_loader = build_Dataloaders(data)
-    train_loader: th.utils.data.DataLoader
-    val_loader:   th.utils.data.DataLoader
-    test_loader:  th.utils.data.DataLoader
-
+            
     printd("Training on", device, "for", global_rank, "with", len(train_loader), len(train_loader.dataset), "and", len(val_loader), len(val_loader.dataset))
 
     net_weights, train_losses, val_losses = train(model, device, train_loader, val_loader) 
@@ -89,9 +91,6 @@ def main() -> None:
 
     if PRINT_WEIGHTS:
         print_params(model)
-
-    # needed sync to avoid hanging processes
-    dist.barrier()
     dist.destroy_process_group()
 
 

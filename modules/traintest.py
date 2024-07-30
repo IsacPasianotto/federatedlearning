@@ -67,7 +67,8 @@ def train(
     val_losses:   th.tensor = th.empty(n_epochs)
 
     for epoch in range(n_epochs):
-
+        #if epoch%10==0:
+        #    print("Doing epoch",epoch)
         model.train()
 
         start.record()
@@ -175,7 +176,6 @@ def train_and_test(
         n_epochs:     int                      = N_EPOCHS,
         lr:           float                    = LEARNING_RATE,
         weight_decay: float                    = WEIGHT_DECAY,
-        test_data:    th.utils.data.DataLoader = None
  ) -> list[dict, th.Tensor, th.Tensor, th.Tensor]:
     """ Train the model on the given dataset and test it on the test set at each epoch
 
@@ -195,8 +195,6 @@ def train_and_test(
         The learning rate to use for optimization, by default LEARNING_RATE
     weight_decay : float, optional
         The weight decay to use for optimization, by default WEIGHT_DECAY
-    test_data : th.utils.data.DataLoader, optional
-        The test data to use, by default None
 
     Returns
     -------
@@ -233,7 +231,7 @@ def train_and_test(
 
         with th.no_grad():
             val_loss: float = step(model, device, val_data, criterion)
-            acc: float = test(model, device, test_data)
+            acc: float = test(model, device, val_data)
 
         val_losses[epoch] = val_loss / len(val_data)
         accuracies[epoch] = acc

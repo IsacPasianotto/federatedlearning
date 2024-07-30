@@ -66,6 +66,7 @@ class BrainDataset(Dataset):
         elif images is not None and labels is not None:
             self.images: th.Tensor = images.float()
             self.labels: th.Tensor = labels.long()
+        self.shuffle()
 
     def __len__(self) -> int:
         """Return the number of images in the dataset"""
@@ -104,13 +105,12 @@ class BrainDataset(Dataset):
 
 
 
-    def train_val_test_split(
+    def train_val_split(
             self,
             train_percentage: float = TRAIN_SIZE,
             val_percentage:   float = VAL_SIZE,
-            test_percentage:  float = TEST_SIZE
     ) -> list:
-        """Split the dataset in train, validation and test sets with the given percentages and return them
+        """Split the dataset in train and validation sets with the given percentages and return them
            as a list of this class objects
 
         Parameters
@@ -119,8 +119,6 @@ class BrainDataset(Dataset):
             percentage of the dataset to be used as training set
         val_percentage: float, optional
             percentage of the dataset to be used as validation set
-        test_percentage: float, optional
-            percentage of the dataset to be used as test set
 
         Returns
         -------
@@ -128,18 +126,16 @@ class BrainDataset(Dataset):
             list containing the train, validation and test sets
         """
 
-        if abs(train_percentage + val_percentage + test_percentage -1) > 10E-6:
+        if abs(train_percentage + val_percentage + TEST_SIZE -1) > 10E-6:
             train_percentage: float = 0.7
-            val_percentage:   float = 0.15
-            test_percentage:  float = 0.15
-            print(f"Error with train-val-test percentages, using default values: {train_percentage} {val_percentage} {test_percentage}")
+            val_percentage:   float = 1 - train_percentage - TEST_SIZE
+            print(f"Error with train-val percentages, using default values: {train_percentage} {val_percentage} {TEST_SIZE}")
 
         self.shuffle()
-
-        train_size: int = int(train_percentage * len(self))
-        val_size:   int = int(val_percentage * len(self))
-        test_size:  int = len(self) - train_size - val_size
-        return random_split(self, [train_size, val_size, test_size])
+        tr_perc = train_percentage/(train_percentage+val_percentage)
+        val_perc = val_percentage/(train_percentage+val_percentage)
+        warnings.filterwarnings("ignore", category=UserWarning, message="Length of split.*")
+        return random_split(self, [tr_perc, val_perc])
 
     def get_class_sizes(self) -> th.Tensor:
         """Count the number of images for each class
@@ -202,7 +198,7 @@ class BrainDataset(Dataset):
                     labels: th.Tensor = th.tensor([subset.dataset[idx][1] for idx in subset.indices])
 
                     # Create a new dataset
-                    new_data: Dataset = Dataset(images, labels)
+                    new_data: BrainDataset = BrainDataset(images, labels)
                     output[i,j] = new_data
 
                     if save:
@@ -282,30 +278,33 @@ def build_Dataloader(
     -------
     DataLoader: The DataLoader object
     """
-    return DataLoader(data, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
+    if len(data) > 0:
+        return DataLoader(data, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
+    return None
 
-def build_Dataloaders(data: Dataset) -> tuple:
+def build_Dataloaders(
+        data: BrainDataset,
+        train_percentage: float = TRAIN_SIZE,
+        val_percentage:   float = VAL_SIZE
+    ) -> list:
     """ Split the given data in train, val, test sets and build their dataloaders
 
     Parameters
     ----------
-    data: Dataset, required
+    data: BrainDataset, required
         the data to be split
     """
-
-    train_data, val_data, test_data = data.train_val_test_split()
+    train_data, val_data = data.train_val_split(train_percentage,val_percentage)
     train_data: th.Tensor
     val_data:   th.Tensor
-    test_data:  th.Tensor
 
-    printd("trdata:",len(train_data), "valdata:", len(val_data), "testdata:", len(test_data))
+    printd("trdata:",len(train_data), "valdata:", len(val_data))
 
     train_loader: DataLoader = build_Dataloader(train_data)
     val_loader:   DataLoader = build_Dataloader(val_data)
-    test_loader:  DataLoader = build_Dataloader(test_data)
 
     printd("nbatches: train:", len(train_loader), "val:", len(val_loader))
     printd("dataloaders size: train:", len(train_loader.dataset), "val:", len(val_loader.dataset))
 
-    return train_loader, val_loader, test_loader
+    return train_loader, val_loader
 
