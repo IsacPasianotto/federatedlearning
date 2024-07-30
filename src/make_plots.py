@@ -8,6 +8,10 @@ import torch as th
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
+
+sns.set_style("darkgrid")
+sns.set_context("notebook")
 
 RESULTS_PATH = '../results/'
 
@@ -36,6 +40,7 @@ def read_data(sim, target):
 
 def plot_losses(simulations, target):
     STEP = 4
+    MIN = 10
     MAX = 21
     # sort the to_read files by the simulation (search the "simulation" string in the path)
     for sim in simulations:    
@@ -48,16 +53,17 @@ def plot_losses(simulations, target):
 
         # for our use case, the global title is the path of the simulation
         title: str = sim.replace("_", " ").capitalize() + "\n" + target.replace("_", " ").capitalize()
-        fig.suptitle(title, fontsize=16)
+        fig.suptitle(title, fontweight='bold', fontsize=18)
+        indices = np.arange(MIN, MAX, STEP)
+        ncols = 2 if len(indices) > 4 else 1
         for i, ax in enumerate(axs.flat):
-            indices = np.arange(0, MAX, STEP)
             selected_data = data[i][indices]
             ax.plot(selected_data.T, label=[f"{j}" for j in indices])
-            ax.set_title(f"Center {i}")
+            ax.set_title(f"Center {i}", fontweight='bold', fontsize=14)
             ax.set_xlabel("Epoch")
             ax.set_ylabel("Loss")
-            ax.legend(title="Iterations", loc="best", ncol=2)
-    
+            ax.legend(title="Iterations", loc="best", ncol=ncols)
+        fig.tight_layout()
         # save the plot in the results folder
         plt.savefig(f"{RESULTS_PATH}/plots/{sim}_{target}.png")
         plt.close()
@@ -77,6 +83,7 @@ def plot_avg_accuracies(
         aggregated_accuracies_mean = np.mean(read_data(sim, "aggregated_accuracies"), axis=0)
         fig, ax = plt.subplots()  
         plot_single(test_accuracies_mean, aggregated_accuracies_mean, sim.replace("_", " ").capitalize(), ax)
+        fig.tight_layout()
         plt.savefig(f"{RESULTS_PATH}/plots/{sim}_aggregated_by_center.png")
         plt.close()
         
@@ -87,9 +94,10 @@ def plot_accuracies(simulations):
         fig, axs = plt.subplots(2, 2, figsize=(15, 10))
 
         # for our use case, the global title is the path of the simulation
-        fig.suptitle(sim.replace("_", " ").capitalize(), fontsize=16)
+        fig.suptitle(sim.replace("_", " ").capitalize(), fontweight='bold', fontsize=18)
         for i, ax in enumerate(axs.flat):
             plot_single(test_accuracies[i], aggr_accuracies[i], f"Center {i}", ax)
+        fig.tight_layout()
         # save the plot in the results folder
         plt.savefig(f"{RESULTS_PATH}/plots/{sim}_accuracies.png")
         plt.close()
@@ -97,7 +105,7 @@ def plot_accuracies(simulations):
 def plot_single(test, aggregated, title, ax):
     ax.plot(test, label="Test")
     ax.plot(aggregated, label="Aggregated")
-    ax.set_title(title)
+    ax.set_title(title, fontweight='bold', fontsize=14)
     ax.set_xlabel("Iteration")
     ax.set_ylabel("Accuracy")
     ax.legend(title="Type", loc="best")
