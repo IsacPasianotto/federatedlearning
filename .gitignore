@@ -6,7 +6,8 @@
 
 data/
 
-results/
+# TODO: comment it at the end
+# results/
 
 federatedenv/
 

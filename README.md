@@ -12,20 +12,6 @@ _Authors_:\
 &emsp;[**Pasianotto Isac**](https://github.com/IsacPasianotto/)\
 &emsp;[**Rossi Davide**](https://github.com/DavideRossi1/)
 
-
-# TODO:
-
-- [x] More meaningful names to some function and classes (eg Dataset, ...)
-- [x] Consistency... al in CamelCase or all in snake_case. (better snake)
-- [x] Fix all the variable names in snake_case in `src/aggregate_weights.py`
-- [x] Subsitute the print of the accuracy of the various network with a way to save it in order to plot it later
-- [ ] Some Nice plots
-- [x] ~~Table with settings explained in detail~~
-- [x] ~~Add a decent README file~~
-  - [ ] Add a theoretical description in section 1.1
-- [ ] Add some references at this readme files
-- [ ] Remove this todo list
-
 # 0. Table of contents
 
 - [Federated learning for brain cancer classification](#federated-learning-for-brain-cancer-classification)
@@ -44,8 +30,6 @@ _Authors_:\
   - [4.1 Data settings](#41-data-settings)
   - [4.2 Federated learning settings](#42-federated-learning-settings)
   - [4.3 Other settings](#43-other-settings)
-- [5. References:](#5-references)
-
 
 # 1. Introduction
 
@@ -163,8 +147,4 @@ To run the code, you need to:
 | `VERBOSE`       | `bool`     | If `True` the code will print all the information about the training                   |
 | `DEBUG`         | `bool`     | If `True` the code will print debug information during the execution                   |
 | `PRINT_WEIGHTS` | `bool`     | If `True` the code will print the weights of the network (used for debugging purposes) |
-
-# 5. References:
-
-***TODO:*** Insert references
 

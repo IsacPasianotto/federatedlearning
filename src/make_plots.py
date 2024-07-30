@@ -14,7 +14,7 @@ sns.set_style("darkgrid")
 sns.set_context("notebook")
 
 RESULTS_PATH = '../results/'
-
+PUT_TITLE = False
 ########
 ## functions
 ########
@@ -39,9 +39,9 @@ def read_data(sim, target):
 
 
 def plot_losses(simulations, target):
-    STEP = 4
-    MIN = 10
-    MAX = 21
+    STEP = 5
+    MIN = 0
+    MAX = 30
     # sort the to_read files by the simulation (search the "simulation" string in the path)
     for sim in simulations:    
         SETTINGS = RESULTS_PATH + sim + "/used_settings.py"
@@ -52,7 +52,7 @@ def plot_losses(simulations, target):
         fig, axs = plt.subplots(2, 2, figsize=(15, 10))
 
         # for our use case, the global title is the path of the simulation
-        title: str = sim.replace("_", " ").capitalize() + "\n" + target.replace("_", " ").capitalize()
+        title: str = sim.replace("_", " ").capitalize() + "\n" + target.replace("_", " ").capitalize() if PUT_TITLE else ""
         fig.suptitle(title, fontweight='bold', fontsize=18)
         indices = np.arange(MIN, MAX, STEP)
         ncols = 2 if len(indices) > 4 else 1
@@ -60,12 +60,22 @@ def plot_losses(simulations, target):
             selected_data = data[i][indices]
             ax.plot(selected_data.T, label=[f"{j}" for j in indices])
             ax.set_title(f"Center {i}", fontweight='bold', fontsize=14)
-            ax.set_xlabel("Epoch")
-            ax.set_ylabel("Loss")
-            ax.legend(title="Iterations", loc="best", ncol=ncols)
+            ax.set_xlabel("Epoch", fontweight='bold', fontsize=12)
+            ax.set_ylabel("Loss", fontweight='bold', fontsize=12)
+            for label in ax.get_xticklabels() + ax.get_yticklabels():
+                label.set_fontsize(12)
+                label.set_fontweight("bold")
+
+            ax.legend(title="Iteration", loc="best", ncol=ncols)
+            ax.patch.set_facecolor(sns.axes_style()["axes.facecolor"])
+            ax.patch.set_alpha(1)
         fig.tight_layout()
         # save the plot in the results folder
-        plt.savefig(f"{RESULTS_PATH}/plots/{sim}_{target}.png")
+        
+        #set the background color of the figure to be transparent
+        fig.patch.set_alpha(0.0)
+
+        plt.savefig(f"{RESULTS_PATH}/plots/{sim}_{target}.png", facecolor=fig.get_facecolor(), edgecolor='none')
         plt.close()
     
 def plot_avg_accuracies(
@@ -82,9 +92,14 @@ def plot_avg_accuracies(
         test_accuracies_mean       = np.mean(read_data(sim, "test_accuracies"), axis=0)
         aggregated_accuracies_mean = np.mean(read_data(sim, "aggregated_accuracies"), axis=0)
         fig, ax = plt.subplots()  
-        plot_single(test_accuracies_mean, aggregated_accuracies_mean, sim.replace("_", " ").capitalize(), ax)
+        title = sim.replace("_", " ").capitalize() if PUT_TITLE else ""
+        plot_single(test_accuracies_mean, aggregated_accuracies_mean, title, ax)
         fig.tight_layout()
-        plt.savefig(f"{RESULTS_PATH}/plots/{sim}_aggregated_by_center.png")
+
+        fig.patch.set_alpha(0.0)
+        ax.patch.set_facecolor(sns.axes_style()["axes.facecolor"])
+
+        plt.savefig(f"{RESULTS_PATH}/plots/{sim}_aggregated_by_center.png", facecolor=fig.get_facecolor(), edgecolor='none')
         plt.close()
         
 def plot_accuracies(simulations):
@@ -94,21 +109,33 @@ def plot_accuracies(simulations):
         fig, axs = plt.subplots(2, 2, figsize=(15, 10))
 
         # for our use case, the global title is the path of the simulation
-        fig.suptitle(sim.replace("_", " ").capitalize(), fontweight='bold', fontsize=18)
+        if PUT_TITLE:
+            fig.suptitle(sim.replace("_", " ").capitalize(), fontweight='bold', fontsize=18)
         for i, ax in enumerate(axs.flat):
             plot_single(test_accuracies[i], aggr_accuracies[i], f"Center {i}", ax)
         fig.tight_layout()
-        # save the plot in the results folder
-        plt.savefig(f"{RESULTS_PATH}/plots/{sim}_accuracies.png")
+        
+        fig.patch.set_alpha(0.0)
+        plt.savefig(f"{RESULTS_PATH}/plots/{sim}_accuracies.png", facecolor=fig.get_facecolor(), edgecolor='none')
         plt.close()
 
 def plot_single(test, aggregated, title, ax):
     ax.plot(test, label="Test")
     ax.plot(aggregated, label="Aggregated")
+    ax.set_ylim(70, 102)
     ax.set_title(title, fontweight='bold', fontsize=14)
-    ax.set_xlabel("Iteration")
-    ax.set_ylabel("Accuracy")
+    ax.set_xlabel("Iteration", fontweight='bold', fontsize=12)
+    ax.set_ylabel("Accuracy", fontweight='bold', fontsize=12)
+    ax.tick_params(axis="both", which="major")
+    # set bodl font to ticks
+    for label in ax.get_xticklabels() + ax.get_yticklabels():
+        label.set_fontsize(12)
+        label.set_fontweight("bold")
     ax.legend(title="Type", loc="best")
+    ax.grid(True, which="both", linestyle="--", linewidth=0.5)
+    ax.patch.set_facecolor(sns.axes_style()["axes.facecolor"])
+    ax.patch.set_alpha(1)
+
 
 
 def find_target_files(base_path: str, target: str) -> list[str]:
@@ -126,8 +153,11 @@ def find_target_files(base_path: str, target: str) -> list[str]:
     list[str]
         The list of all the files that contain the target string
     """
-    return [os.path.join(dp, f) for dp, dn, filenames in os.walk(base_path) 
+
+    files = [os.path.join(dp, f) for dp, dn, filenames in os.walk(base_path) 
                                 for f in filenames if target in f]
+    sortedFiles = sorted(files, key=lambda x: int(x.split("_")[-1].split(".")[0]))
+    return sortedFiles
 
 
 def main() -> None:
