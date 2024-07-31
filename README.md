@@ -12,12 +12,16 @@ _Authors_:\
 &emsp;[**Pasianotto Isac**](https://github.com/IsacPasianotto/)\
 &emsp;[**Rossi Davide**](https://github.com/DavideRossi1/)
 
-> Warning:
-> This repository contains in its history some large files (saved weights of the neural network) that can significantly slow down the cloning process and are not needed for the code execution.
-> For this reason it is strongly recommended to clone the clone-dedicated branch with the following command:
-> ```bash
->    git clone --depth 1 https://github.com/IsacPasianotto/federatedlearning.git --branch fastdownload --single-branch
-> ```
+
+>> ***Warning:***
+>>
+>> This repository contains in its history some large files (saved weights of the neural network) that can significantly slow down the cloning process and are unnecessary for the code execution.
+>> 
+>> For this reason, it is strongly recommended to clone the clone-dedicated branch with the following command:
+>>
+>> ```bash
+>>    git clone --depth 1 https://github.com/IsacPasianotto/federatedlearning.git --branch fastdownload --single-branch
+>> ```
 
 # 0. Table of contents
 
