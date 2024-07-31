@@ -12,10 +12,16 @@ _Authors_:\
 &emsp;[**Pasianotto Isac**](https://github.com/IsacPasianotto/)\
 &emsp;[**Rossi Davide**](https://github.com/DavideRossi1/)
 
+> Warning:
+> This repository contains in its history some large files (saved weights of the neural network) that can significantly slow down the cloning process and are not needed for the code execution.
+> For this reason it is strongly recommended to clone the clone-dedicated branch with the following command:
+> ```bash
+>    git clone --depth 1 https://github.com/IsacPasianotto/federatedlearning.git --branch fastdownload --single-branch
+> ```
+
 # 0. Table of contents
 
 - [Federated learning for brain cancer classification](#federated-learning-for-brain-cancer-classification)
-- [TODO:](#todo)
 - [0. Table of contents](#0-table-of-contents)
 - [1. Introduction](#1-introduction)
   - [1.0 The idea behind federated learning](#10-the-idea-behind-federated-learning)
@@ -25,7 +31,7 @@ _Authors_:\
   - [2.0 Prerequisites](#20-prerequisites)
   - [2.1 Generate the dataset:](#21-generate-the-dataset)
 - [3. How to run](#3-how-to-run)
-- [4. Settings doc:](#4-settings-doc)
+- [4. Settings doc](#4-settings-doc)
   - [4.0 Neural Network settings](#40-neural-network-settings)
   - [4.1 Data settings](#41-data-settings)
   - [4.2 Federated learning settings](#42-federated-learning-settings)
@@ -64,7 +70,7 @@ The model has been trained on multi-node, multi-GPU clusters (Leonardo and Orfeo
 
 ## 2.0 Prerequisites
 
-All the presented code was tested with `Python 3.10.12`, using the libraries listed in the [`environment.txt`](./environment.txt) file. 
+All the presented code was tested with `Python 3.10.12`, using the libraries listed in the [`environment.txt`](./environment.txt) file.
 
 To get started with the code, we recommend to create a virtual with [`venv`](https://docs.python.org/3/library/venv.html) as follows:
 
@@ -77,7 +83,7 @@ pip install -r environment.txt
 ## 2.1 Generate the dataset:
 
 Before running the `main.py` file for the first time, you need to download the dataset (omitted in this repository due to its size) and generate the `.pt` file with all the images and labels.
-To do so, just allocate some resources in the cluster (this code will require around 80GB of RAM) and run: 
+To do so, just allocate some resources in the cluster (this code will require around 160GB of RAM) and run:
 
 ```bash
 source $(pwd)/federatedenv/bin/activate
@@ -88,57 +94,59 @@ python src/data_downloader.py
 
 # 3. How to run
 
-All the main loop of the federated learning is performed in the [`sbatch.sh`](./sbatch.sh) file. 
+All the main loop of the federated learning is performed in the [`sbatch.sh`](./sbatch.sh) file.
 This is a bash script which will request resources from a cluster through the [SLURM](https://slurm.schedmd.com/) scheduler and perform sequentially the [`main.py`](./main.py) and [`aggregate_weights.py`](./src/aggregate_weights.py) files.
 
 To run the code, you need to:
 
   - Set up the `setting.py` file with the desired settings
+  - Fill the SLURM directives in the `sbatch.sh` file accordingly to the cluster you are using
   - Launch the `sbatch.sh` file with the sbatch command
     ```bash
     sbatch sbatch.sh
     ```
 
-# 4. Settings doc:
+# 4. Settings doc
 
 ## 4.0 Neural Network settings
 
 | **_Variable_**  | **_Type_** | **_Description_**                                                   |
-| :-------------: | :--------: | :----------------------------------------------------------------   |
-|  `BATCH_SIZE`   |   `int`    | Batch size for the training                                         |
-|   `N_EPOCHS`    |   `int`    | Number of epochs the single center will train the model             |
-| `LEARNING_RATE` |  `float`   | Learning rate for the optimizer                                     |
-|  `WEIGHT_DECAY` |  `float`   | Weight decay for the optimizer                                      |   
-|   `TRAINSIZE`   |  `float`   | Percentage of the local dataset each center will use for training   |
-|    `VALSIZE`    |  `float`   | Percentage of the local dataset each center will use for validation |
-|   `TESTSIZE`    |  `float`   | Percentage of the local dataset each center will use for test       |
+|:---------------:|:----------:|:--------------------------------------------------------------------|
+| `BATCH_SIZE`    | `int`      | Batch size for the training                                         |
+| `N_EPOCHS`      | `int`      | Number of epochs the single center will train the model             |
+| `LEARNING_RATE` | `float`    | Learning rate for the optimizer                                     |
+| `WEIGHT_DECAY`  | `float`    | Weight decay for the optimizer                                      |
+| `TRAIN_SIZE`    | `float`    | Percentage of the local dataset each center will use for training   |
+| `VAL_SIZE`      | `float`    | Percentage of the local dataset each center will use for validation |
+| `TEST_SIZE`     | `float`    | Percentage of the local dataset each center will use for test       |
 
 ## 4.1 Data settings
 
+| **_Variable_**  | **_Type_**          | **_Description_**                                                                                     |
+|:---------------:|:-------------------:|:------------------------------------------------------------------------------------------------------|
+| `DATA_PATH`     | `string`            | Path in wich the `.pt` file with all the images and labels is stored                                  |
+| `RESULTS_PATH`  | `string`            | Directory where to put all the results of the computations                                            |
+| `BASELINE_PATH` | `string`            | Directory where to put the results of the baseline (network trained on the whole data) results        |
+| `AUGMENT_DATA`  | `bool`              | If `True`, the data generated by the [`data_downloader.py`](src/data_downloader.py) will be augmented |
+| `DOWNLOAD_URL`  | `string`            | URL from which to download the dataset                                                                |
+| `ALL_DATA`      | `string`            | File name of the `.pt` file with all the images and labels                                            |
+| `ZIP_FILE`      | `string`            | File name of the `.zip` file wile that will be downloaded from the `DOWNLOAD_URL`                     |
+| `EXTRACT_DIR`   | `string`            | Directory where to extract the `.zip` file                                                            |
+| `FILE_EXT`      | `string`            | Extension of the images that are going to be downloaded                                               |
+| `PIC_SIZE`      | `int`               | Size in which the images are going to be resized (square images)                                      |
+| `LABELS`        | `list[string: int]` | List of the labels that are going to be used in the dataset                                           |
 
-|   **_Variable_**   |     **_Type_**      | **_Description_**                                                                                     |
-|:------------------:|:-------------------:|:----------------------------------------------------------------------------------------------------- |
-|    `DATA_PATH`     |      `string`       | Path in wich the `.pt` file with all the images and labels is stored                                  |
-|   `RESULTS_PATH`   |      `string`       | Directory where to put all the results of the computations                                            |
-|   `AUGMENT_DATA`   |       `bool`        | If `True`, the data generated by the [`data_downloader.py`](src/data_downloader.py) will be augmented |
-|   `DOWNLOAD_URL`   |      `string`       | URL from which to download the dataset                                                                |
-|     `ALL_DATA`     |      `string`       | File name of the `.pt` file with all the images and labels                                            |
-|     `ZIP_FILE`     |      `string`       | File name of the `.zip` file wile that will be downloaded from the `DOWNLOAD_URL`                     |
-|   `EXTRACT_DIR`    |      `string`       | Directory where to extract the `.zip` file                                                            |
-|     `FILE_EXT`     |      `string`       | Extension of the images that are going to be downloaded                                               |
-|     `PIC_SIZE`     |        `int`        | Size in which the images are going to be resized (square images)                                      |
-|     `LABELS`       | `list[string: int]` | List of the labels that are going to be used in the dataset                                           |
-|   `CLASS_SIZES`    |     `list[int]`     | List of the number of images for each class in the dataset                                            |
 
 
 ## 4.2 Federated learning settings
 
-| **_Variable_** | **_Type_** | **_Description_**                                                               |
-|:--------------:|:----------:|:--------------------------------------------------------------------------------|
-| `NITER_FED`    | `int`      | Number of iterations of the federated learning algorithm                        |
-| `PERC`| `Tensor[NCENTERS, NCLASSES]` | Percentage of each class of the dataset for each center                |
-| `NCLASSES`     | `int`      | Number of classes in the dataset                                                |
-| `NCENTERS`     | `int`      | Number of centers that are going to be used in the federated learning algorithm |
+| **_Variable_** | **_Type_**                   | **_Description_**                                                               |
+|:--------------:|:----------------------------:|:--------------------------------------------------------------------------------|
+| `N_ITER_FED`   | `int`                        | Number of iterations of the federated learning algorithm                        |
+| `PERC`         | `Tensor[NCENTERS, NCLASSES]` | Percentage of each class of the dataset for each center                         |
+| `N_CLASSES`    | `int`                        | Number of classes in the dataset                                                |
+| `N_CENTERS`    | `int`                        | Number of centers that are going to be used in the federated learning algorithm |
+| `CLASS_SIZES`  | `list[int]`                  | List of the number of images for each class in the dataset                      |
 
 ## 4.3 Other settings
 
