@@ -164,7 +164,9 @@ def find_target_files(base_path: str, target: str) -> list[str]:
     sortedFiles = sorted(files, key=lambda x: int(x.split("_")[-1].split(".")[0]))
     return sortedFiles
 
-def plot_baseline():
+def plot_baseline() -> None:
+    """Plot baseline accuracy and losses in a unique file
+    """
     base = RESULTS_PATH + 'baseline/' 
     accuracies = pd.read_csv(base + 'accuracies.csv')
     trlosses = pd.read_csv(base + 'train_losses.csv')

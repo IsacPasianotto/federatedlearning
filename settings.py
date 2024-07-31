@@ -2,8 +2,7 @@
 ## Imports
 ########
 
-import torch as th
-from torch import Tensor
+from torch import tensor, Tensor, t
 
 ########
 ## Neural Network settings
@@ -21,17 +20,18 @@ TEST_SIZE:      float = 0.15
 ## Data settings
 ########
 
-DATA_PATH:    str  = './data'
-RESULTS_PATH: str  = './results/eight_centers-all_balanced'
-AUGMENT_DATA: bool = True
+DATA_PATH:     str  = './data'
+RESULTS_PATH:  str  = './results/eight_centers-all_balanced'
+BASELINE_PATH: str  = './results/baseline/'
+AUGMENT_DATA:  bool = True
 
 # To generate the initial Dataset:
-DOWNLOAD_URL:    str = "https://www.kaggle.com/api/v1/datasets/download/masoudnickparvar/brain-tumor-mri-dataset?datasetVersionNumber=1"
-ALL_DATA:        str = DATA_PATH + '/BrainCancerDataset.pt'
-ZIP_FILE:        str = DATA_PATH + '/BrainCancer.zip'
-EXTRACT_DIR:     str = DATA_PATH + '/BrainCancerRawData/'
-FILE_EXT:        str = '.jpg'
-PIC_SIZE: int = 512
+DOWNLOAD_URL: str = "https://www.kaggle.com/api/v1/datasets/download/masoudnickparvar/brain-tumor-mri-dataset?datasetVersionNumber=1"
+ALL_DATA:     str = DATA_PATH + '/BrainCancerDataset.pt'
+ZIP_FILE:     str = DATA_PATH + '/BrainCancer.zip'
+EXTRACT_DIR:  str = DATA_PATH + '/BrainCancerRawData/'
+FILE_EXT:     str = '.jpg'
+PIC_SIZE:     int = 512
 
 LABELS: dict[str, int] = {
     'notumor': 0,
@@ -48,7 +48,7 @@ N_ITER_FED: int = 30
 
 # PERC must have shape (nCenters, nClasses): each tensor represents the percentages in which to split each class
 
-PERC: Tensor = th.tensor(
+PERC: Tensor = tensor(
     [[0.125, 0.125, 0.125, 0.125],      # Center 1
      [0.125, 0.125, 0.125, 0.125],      # Center 2
      [0.125, 0.125, 0.125, 0.125],      # Center 3
@@ -66,14 +66,14 @@ N_CLASSES: int = len(LABELS)
 CLASS_SIZES: list[int] = [4000, 3290, 3242, 3514]
 
 # The code was originally written for PERC written in the transposed form
-PERC = th.t(PERC)
+PERC = t(PERC)
 
 ########
 ## Debug & Other settings
 ########
 
-VERBOSE:      bool = True
-DEBUG:        bool = False
+VERBOSE:       bool = True
+DEBUG:         bool = False
 PRINT_WEIGHTS: bool = False
 
 def printw(*args, **kwargs) -> None:

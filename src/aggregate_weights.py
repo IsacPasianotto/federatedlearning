@@ -27,8 +27,8 @@ def main() -> None:
     total:          int       = sum(center_sizes)
     center_weights: th.Tensor = (th.tensor(center_sizes, dtype=th.float) / total)
 
-    # move all to cpu becanus they could be in different GPUs
-    net_weights = [{ a:b.cpu() for a,b in w.items() } for w in net_weights]
+    # move all to cpu since they could be in different GPUs
+    net_weights: list[dict[str, th.Tensor]] = [{ a:b.cpu() for a,b in w.items() } for w in net_weights]
 
     printd("---------------------------------------")
     printd("Sizes for aggregated:", center_sizes)
@@ -37,9 +37,9 @@ def main() -> None:
     # Perform a deep copy to retrieve just the structure, not the original values
     new_weights: dict[str, th.Tensor] = copy.deepcopy(net_weights[0])
 
-    for k in new_weights.keys():
-        stacked_tensors: th.Tensor = th.stack([state_dict[k] for state_dict in net_weights])
-        new_weights[k] = (stacked_tensors * center_weights.view(-1, *([1] * (stacked_tensors.dim() - 1)))).sum(dim=0)
+    for key in new_weights.keys():
+        stacked_tensors: th.Tensor = th.stack([state_dict[key] for state_dict in net_weights])
+        new_weights[key] = (stacked_tensors * center_weights.view(-1, *([1] * (stacked_tensors.dim() - 1)))).sum(dim=0)
 
     printd("---------------------------------------")
     for i in range(N_CENTERS):

@@ -30,33 +30,34 @@ def main() -> None:
     printd("-----------------------------------------------------")
     printd("Start generating independent datasets for each center")
     printd("-----------------------------------------------------")
-    data:     th.Tensor     = th.load(ALL_DATA)
-    tr_perc = TRAIN_SIZE + VAL_SIZE
-    dataSplit = data.split_classes(th.tensor([[tr_perc]*N_CLASSES,
-                                            [TEST_SIZE]*N_CLASSES,
-                                            [0.0]*N_CLASSES,
-                                            [0.0]*N_CLASSES]).T)                                       
-    traindata = BrainDataset(files=dataSplit[0])
-    testdata = BrainDataset(files=dataSplit[1])
-    train_datasets: list[BrainDataset] = traindata.split_classes(PERC)
-    train_new_data: list[BrainDataset] = [BrainDataset(files=d) for d in train_datasets]
+    data: BrainDataset = th.load(ALL_DATA)
+    dataSplit = data.split_classes(th.tensor([[TRAIN_SIZE+VAL_SIZE]*N_CLASSES,
+                                                        [TEST_SIZE]*N_CLASSES,
+                                                              [0.0]*N_CLASSES,
+                                                              [0.0]*N_CLASSES]).T)                                       
+    generate_and_save_data(dataSplit[0], False)
+    generate_and_save_data(dataSplit[1], True)
 
-    test_datasets: list[BrainDataset] = testdata.split_classes(PERC)
-    test_new_data: list[BrainDataset] = [BrainDataset(files=d) for d in test_datasets]
-    printd("-----------------------------------------------------")
-    printd(f"Saving train: {len(train_new_data)} datasets with {[len(d) for d in train_new_data]} elements")
-    printd("-----------------------------------------------------")
-    for i,d in enumerate(train_new_data):
-        th.save(d, f"{DATA_PATH}/center_{i}.pt")
+    print("---------------------------------------------------------")
+    print("Finished to generate indipendent datasets for each center")
+    print("---------------------------------------------------------")
 
+
+
+def generate_and_save_data(
+    data: BrainDataset,
+    isTest: bool
+    ) -> None:
+    new_data = BrainDataset(files=data)
+    datasets: list[BrainDataset] = new_data.split_classes(PERC)
+    new_data: list[BrainDataset] = [BrainDataset(files=d) for d in datasets]
     printd("-----------------------------------------------------")
-    printd(f"Saving test:{len(test_new_data)} datasets with {[len(d) for d in test_new_data]} elements")
+    printd(f"Saving: {len(new_data)} datasets with {[len(d) for d in new_data]} elements")
     printd("-----------------------------------------------------")
-    for i,d in enumerate(test_new_data):
-        th.save(d, f"{DATA_PATH}/center_{i}_test.pt")
+    end = "_test" if isTest else ""
+    for i,d in enumerate(new_data):
+        th.save(d, f"{DATA_PATH}/center_{i}{end}.pt")
+
 
 if __name__ == '__main__':
     main()
-    print("---------------------------------------------------------", flush = True)
-    print("Finished to generate indipendent datasets for each center", flush = True)
-    print("---------------------------------------------------------", flush = True)

@@ -33,9 +33,7 @@ def main() -> None:
     if th.cuda.is_available():
         device: th.device = th.device(f"cuda:{local_rank}")
         th.cuda.set_device(device)
-
         printd(f"Process {global_rank} (Node {node_rank}, GPU {local_rank}) loading data")
-
     else:
         raise RuntimeError("No CUDA devices found. This code requires GPU support. Aborting")
 
@@ -47,8 +45,8 @@ def main() -> None:
     testAcc_file:      str = f"{RESULTS_PATH}/test_accuracies_{global_rank}.csv"
     aggrAcc_file:      str = f"{RESULTS_PATH}/aggregated_accuracies_{global_rank}.csv"
 
-    train_data: Dataset = th.load(train_data_file)
-    test_data:  Dataset = th.load(test_data_file)
+    train_data: BrainDataset = th.load(train_data_file)
+    test_data:  BrainDataset = th.load(test_data_file)
     printd(f"Rank {global_rank} loaded {train_data_file}, {test_data_file} having {len(train_data)} train images and {len(test_data)} test images")
 
     model: BrainClassifier = BrainClassifier().to(device)
@@ -59,9 +57,8 @@ def main() -> None:
     test_loader:  th.utils.data.DataLoader = build_Dataloader(test_data)
 
     if os.path.isfile(weights_file):
-
         printd(f"Found data, importing from {weights_file}")
-        net_weights: th.Tensor = th.load(weights_file)
+        net_weights: dict[str, th.Tensor] = th.load(weights_file)
         model.load_state_dict(net_weights)
 
         # Test the model

@@ -28,7 +28,7 @@ def train(
         n_epochs:     int   = N_EPOCHS,
         lr:           float = LEARNING_RATE,
         weight_decay: float = WEIGHT_DECAY
-    ) -> th.Tensor:
+    ) -> tuple[dict[str, th.Tensor], th.Tensor, th.Tensor]:
     """ Train the model on the given dataset
 
     Parameters
@@ -50,12 +50,15 @@ def train(
 
     Returns
     -------
-    th.Tensor
+    dict[str, th.Tensor]
         The state dictionary of the model after training
+    th.Tensor
+        the train losses
+    th.Tensor
+        the validation losses
+        
     """
-
     cuda.set_device(device)
-
     criterion: nn.Module       = nn.CrossEntropyLoss()
     optimizer: optim.Optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
 
@@ -173,10 +176,10 @@ def train_and_test(
         device:       th.device,
         train_data:   th.utils.data.DataLoader,
         val_data:     th.utils.data.DataLoader,
-        n_epochs:     int                      = N_EPOCHS,
-        lr:           float                    = LEARNING_RATE,
-        weight_decay: float                    = WEIGHT_DECAY,
- ) -> list[dict, th.Tensor, th.Tensor, th.Tensor]:
+        n_epochs:     int   = N_EPOCHS,
+        lr:           float = LEARNING_RATE,
+        weight_decay: float = WEIGHT_DECAY,
+ ) -> tuple[dict, th.Tensor, th.Tensor, th.Tensor]:
     """ Train the model on the given dataset and test it on the test set at each epoch
 
     Parameters
@@ -198,12 +201,10 @@ def train_and_test(
 
     Returns
     -------
-    list[dict, th.Tensor, th.Tensor, th.Tensor]
+    tuple[dict, th.Tensor, th.Tensor, th.Tensor]
         The state dictionary of the model after training, the training losses, the validation losses, and the test accuracies
     """
-
     cuda.set_device(device)
-
     criterion: nn.Module       = nn.CrossEntropyLoss()
     optimizer: optim.Optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
 
@@ -231,7 +232,7 @@ def train_and_test(
 
         with th.no_grad():
             val_loss: float = step(model, device, val_data, criterion)
-            acc: float = test(model, device, val_data)
+            acc:      float = test(model, device, val_data)
 
         val_losses[epoch] = val_loss / len(val_data)
         accuracies[epoch] = acc

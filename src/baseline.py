@@ -19,10 +19,9 @@ def main() -> None:
     data: BrainDataset = th.load(ALL_DATA)
     print("Data loaded")
     model: BrainClassifier = BrainClassifier().to(device)
-    train_loader, val_loader, test_loader = build_Dataloaders(data, 0.8, 0.2, 0.0)
+    train_loader, val_loader = build_Dataloaders(data, 0.8, 0.2)
     train_loader: th.utils.data.DataLoader
     val_loader:   th.utils.data.DataLoader
-    test_loader:  th.utils.data.Data
     
     print("Starting train")
     nEpochs = 300
@@ -34,21 +33,16 @@ def main() -> None:
     
     print("Starting test")
     
-    #os.mkdirs(BASELINE_PATH, exist_ok=True)
-    
-    with open(BASELINE_PATH + "train_losses.csv", "w") as f:
-        for loss in train_losses:
-            f.write(str(float(loss)))
-            f.write("\n")
-    
-    with open(BASELINE_PATH + "val_losses.csv", "w") as f:
-        for loss in val_losses:
-            f.write(str(float(loss)))
-            f.write("\n")
+    os.makedirs(BASELINE_PATH, exist_ok=True)
+    save(train_losses, "train_losses.csv")
+    save(val_losses, "val_losses.csv")
+    save(accuracies, "accuracies.csv")
 
-    with open(BASELINE_PATH + "accuracies.csv", "w") as f:
-        for acc in accuracies:
-            f.write(str(float(acc)))
+
+def save(values, filename):
+    with open(BASELINE_PATH + filename, "w") as f:
+        for val in values:
+            f.write(str(float(val)))
             f.write("\n")
 
 if __name__ == '__main__':

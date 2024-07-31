@@ -82,10 +82,7 @@ class BrainDataset(Dataset):
         """
         return self.images[idx], self.labels[idx]
 
-    def labelStr(
-            self,
-            label: int
-    ) -> str:
+    def labelStr(self, label: int) -> str:
         """Return the string representation of the given label
 
         Parameters
@@ -132,8 +129,9 @@ class BrainDataset(Dataset):
             print(f"Error with train-val percentages, using default values: {train_percentage} {val_percentage} {TEST_SIZE}")
 
         self.shuffle()
-        tr_perc = train_percentage/(train_percentage+val_percentage)
-        val_perc = val_percentage/(train_percentage+val_percentage)
+        train_total: int = train_percentage + val_percentage
+        tr_perc:     int = train_percentage/train_total
+        val_perc:    int = val_percentage/train_total
         warnings.filterwarnings("ignore", category=UserWarning, message="Length of split.*")
         return random_split(self, [tr_perc, val_perc])
 
@@ -150,15 +148,15 @@ class BrainDataset(Dataset):
 
     def split_classes(
             self,
-            percent_per_class: list[list[float]],
+            percent_per_class: th.FloatTensor,
             save:              bool = False
-    ) -> list:
+    ) -> np.ndarray:
 
         """Split the dataset into multiple datasets, one for each class and center, and saves them if desired
 
         Parameters
         ----------
-        percent_per_class: (List[List[float]]), required
+        percent_per_class: (torch.FloatTensor), required
             List of lists of floats representing the percentage of each class to be in each subset
         save: bool, optional
             Decide if to save the created datasets or not. Default is False
@@ -170,7 +168,7 @@ class BrainDataset(Dataset):
 
         Returns
         -------
-            List[List[Dataset]]: List of the created datasets, one for each class and center
+            np.ndarray: List of the created datasets, one for each class and center
         """
         datasets: list = [Subset(self, th.where(self.labels == i)[0]) for i in range(N_CLASSES)]
 
@@ -186,7 +184,6 @@ class BrainDataset(Dataset):
             warnings.filterwarnings("ignore", category=UserWarning, message="Length of split.*")
 
             data: list = random_split(datasets[i], percent_per_class[i])
-            # debugs, triggered only if settings.DEBUG is True
             printd(percent_per_class[i])
             printd(len(datasets[i]), [len(d) for d in data])
 
@@ -200,7 +197,6 @@ class BrainDataset(Dataset):
                     # Create a new dataset
                     new_data: BrainDataset = BrainDataset(images, labels)
                     output[i,j] = new_data
-
                     if save:
                         label: str = self.labelStr(i)
                         os.makedirs(f"data/{label}", exist_ok=True)
@@ -262,14 +258,14 @@ class BrainDataset(Dataset):
 ########
 
 def build_Dataloader(
-        data:       th.Tensor,
+        data:       BrainDataset,
         batch_size: int = BATCH_SIZE
     ) -> DataLoader:
     """ Build a DataLoader object for the given data
 
     Parameters
     ----------
-    data: th.Tensor, required
+    data: BrainDataset, required
         The data to be loaded
     batch_size: int, optional
         The batch size to be used. Default is taken from settings file
@@ -286,13 +282,21 @@ def build_Dataloaders(
         data: BrainDataset,
         train_percentage: float = TRAIN_SIZE,
         val_percentage:   float = VAL_SIZE
-    ) -> list:
+    ) -> tuple:
     """ Split the given data in train, val, test sets and build their dataloaders
 
     Parameters
     ----------
     data: BrainDataset, required
         the data to be split
+    train_percentage: float, optional
+        the percentage of the data to be used as training set
+    val_percentage: float, optional
+        the percentage of the data to be used as validation set
+    
+    Returns
+    -------
+    tuple: The train and validation DataLoaders
     """
     train_data, val_data = data.train_val_split(train_percentage,val_percentage)
     train_data: th.Tensor
@@ -307,4 +311,3 @@ def build_Dataloaders(
     printd("dataloaders size: train:", len(train_loader.dataset), "val:", len(val_loader.dataset))
 
     return train_loader, val_loader
-

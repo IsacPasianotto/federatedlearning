@@ -5,6 +5,7 @@
 # Installed modules:
 import os
 import sys
+import torch as th
 from PIL import Image
 import torchvision.transforms as transforms
 import zipfile
@@ -35,12 +36,8 @@ def explore_dir(
 
     return [ os.path.join(root, file) for root,_, files in os.walk(dir) for file in files if file.endswith(fileExt) ]
 
-# TODO --> Rename with something like "build_img_and_labds".
-#          In this way it seems that it builds only the labels
 
-def build_imgsLabels(
-        augment: bool = AUGMENT_DATA
-    ) -> tuple[th.Tensor, th.Tensor]:
+def build_imgs_and_labels(augment: bool = AUGMENT_DATA) -> tuple[th.Tensor, th.Tensor]:
     """Build the images and labels tensors from the dataset.
 
        If augment is True, it will also augment the images by duplicating them and applying some transformations to the copies.
@@ -49,6 +46,11 @@ def build_imgsLabels(
     ----------
     augment : bool, optional
         Whether to augment the images or not. The default is taken from the settings file.
+        
+    Returns
+    -------
+    tuple[th.Tensor, th.Tensor]
+        The images and labels tensors
     """
 
     images:      list[th.Tensor] = []
@@ -64,20 +66,19 @@ def build_imgsLabels(
 
     if augment:
         transform_augmented: transforms.Compose = transforms.Compose([
-            transforms.Resize(img_size),                              # Resize images to a fixed size
-            transforms.RandomHorizontalFlip(),                        # Apply random horizontal flip
-            transforms.RandomVerticalFlip(),                          # Apply random vertical flip
-            # transforms.RandomEqualize(),                            # Apply random equalization -> substitute with ColorJitter
-            transforms.RandomRotation(15),                            # Apply random rotations
-            transforms.ToTensor(),                                    # Convert images to PyTorch tensors
-            transforms.ColorJitter(brightness=0.1, contrast=0.2, saturation=0.1, hue=0.3), # Apply random color jitter (callable on tensors only)
+            transforms.Resize(img_size),                          # Resize images to a fixed size
+            transforms.RandomHorizontalFlip(),                    # Apply random horizontal flip
+            transforms.RandomVerticalFlip(),                      # Apply random vertical flip
+            # transforms.RandomEqualize(),                        # Apply random equalization -> substitute with ColorJitter
+            transforms.RandomRotation(15),                        # Apply random rotations
+            transforms.ToTensor(),                                # Convert images to PyTorch tensors
+            transforms.ColorJitter(brightness=0.1, contrast=0.2, 
+                                   saturation=0.1, hue=0.3),      # Apply random color jitter (callable on tensors only)
         ])
-
 
     for image_file in image_files:
         image: Image = Image.open(image_file).convert('RGB')
         label: int   = LABELS[image_file.split('/')[-2]]
-
         images.append(transform(image))
         labels.append(label)
 
@@ -88,7 +89,6 @@ def build_imgsLabels(
     # Stack all the tensors in a single tensor
     images: th.Tensor = th.stack(images)
     labels: th.Tensor = th.tensor(labels)
-
     return images, labels
 
 
@@ -107,7 +107,6 @@ def main() -> None:
         os.system('wget -q -O %s %s' % (ZIP_FILE, DOWNLOAD_URL))
 
     if not os.path.exists(EXTRACT_DIR):
-
         print(f"Extracting data from {ZIP_FILE}")
         print("-------------------------------------------------")
         os.makedirs(EXTRACT_DIR)
@@ -117,14 +116,14 @@ def main() -> None:
     print("-------------------------------------------------")
     print(f"Resizing all the images to the same size: {PIC_SIZE}x{PIC_SIZE}")
     print("-------------------------------------------------")
-    dataset = BrainDataset(*build_imgsLabels())
+    dataset = BrainDataset(*build_imgs_and_labels())
 
     printd("---------------------------------------------")
     printd("Editing the class sizes in 'settings.py' file")
     printd("---------------------------------------------")
-    class_sizes:     th.Tensor   = dataset.get_class_sizes()
-    int_class_sizes: list[int]   = [int(s) for s in class_sizes]
-    settingsPath:   str          = os.path.join(os.path.dirname(__file__), '../settings.py')
+    class_sizes:     th.Tensor = dataset.get_class_sizes()
+    int_class_sizes: list[int] = [int(s) for s in class_sizes]
+    settingsPath:    str       = os.path.join(os.path.dirname(__file__), '../settings.py')
     command = f"sed -i 's/CLASS_SIZES: list\\[int\\] = \\[.*\\]/CLASS_SIZES: list[int] = {int_class_sizes}/' {settingsPath}"
     os.system(command)
 
