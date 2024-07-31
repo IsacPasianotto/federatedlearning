@@ -15,6 +15,8 @@ sns.set_context("notebook")
 
 RESULTS_PATH = '../results/'
 PUT_TITLE = False
+ACC_BASELINE=85.58
+
 ########
 ## functions
 ########
@@ -45,8 +47,9 @@ def plot_losses(simulations, target):
     # sort the to_read files by the simulation (search the "simulation" string in the path)
     for sim in simulations:    
         SETTINGS = RESULTS_PATH + sim + "/used_settings.py"
-        N_ITER_FED = get_int_constant_from_file(SETTINGS, "NITER_FED")  # TO CHANGE NITER_FED -> N_ITER_FED #############################
+        N_ITER_FED = get_int_constant_from_file(SETTINGS, "N_ITER_FED") 
         N_EPOCHS = get_int_constant_from_file(SETTINGS, "N_EPOCHS")
+
         to_read: list[str] = find_target_files(RESULTS_PATH + sim, target)
         data = [th.load(d).reshape(N_ITER_FED, N_EPOCHS) for d in to_read if sim==d.split("/")[2]]
         fig, axs = plt.subplots(2, 2, figsize=(15, 10))
@@ -95,7 +98,6 @@ def plot_avg_accuracies(
         title = sim.replace("_", " ").capitalize() if PUT_TITLE else ""
         plot_single(test_accuracies_mean, aggregated_accuracies_mean, title, ax)
         fig.tight_layout()
-
         fig.patch.set_alpha(0.0)
         ax.patch.set_facecolor(sns.axes_style()["axes.facecolor"])
 
@@ -107,14 +109,12 @@ def plot_accuracies(simulations):
         test_accuracies = read_data(sim, "test_accuracies")
         aggr_accuracies = read_data(sim, "aggregated_accuracies")
         fig, axs = plt.subplots(2, 2, figsize=(15, 10))
-
         # for our use case, the global title is the path of the simulation
         if PUT_TITLE:
             fig.suptitle(sim.replace("_", " ").capitalize(), fontweight='bold', fontsize=18)
         for i, ax in enumerate(axs.flat):
             plot_single(test_accuracies[i], aggr_accuracies[i], f"Center {i}", ax)
         fig.tight_layout()
-        
         fig.patch.set_alpha(0.0)
         plt.savefig(f"{RESULTS_PATH}/plots/{sim}_accuracies.png", facecolor=fig.get_facecolor(), edgecolor='none')
         plt.close()
@@ -122,11 +122,16 @@ def plot_accuracies(simulations):
 def plot_single(test, aggregated, title, ax):
     ax.plot(test, label="Test")
     ax.plot(aggregated, label="Aggregated")
-    ax.set_ylim(70, 102)
+    # ax.set_ylim(70, 102)
+    ax.set_ylim(65, ACC_BASELINE + 5)
     ax.set_title(title, fontweight='bold', fontsize=14)
     ax.set_xlabel("Iteration", fontweight='bold', fontsize=12)
     ax.set_ylabel("Accuracy", fontweight='bold', fontsize=12)
     ax.tick_params(axis="both", which="major")
+
+    # baseline Accuracy
+    ax.axhline(y=ACC_BASELINE, color="r", linestyle="--", label="Baseline")
+
     # set bodl font to ticks
     for label in ax.get_xticklabels() + ax.get_yticklabels():
         label.set_fontsize(12)
@@ -159,6 +164,32 @@ def find_target_files(base_path: str, target: str) -> list[str]:
     sortedFiles = sorted(files, key=lambda x: int(x.split("_")[-1].split(".")[0]))
     return sortedFiles
 
+def plot_baseline():
+    base = RESULTS_PATH + 'baseline/' 
+    accuracies = pd.read_csv(base + 'accuracies.csv')
+    trlosses = pd.read_csv(base + 'train_losses.csv')
+    vallosses = pd.read_csv(base + 'val_losses.csv')
+    fig, axs = plt.subplots()
+    axs2 = axs.twinx()
+    axs.plot(trlosses, label='Train loss')
+    axs.plot(vallosses, label='Val loss')
+    axs2.plot(accuracies, label='Accuracy', color='green')
+    axs.set_xlabel('Epoch', fontsize=12, fontweight='bold')
+    axs.set_ylabel('Loss', fontsize=12, fontweight='bold')
+    axs2.set_ylabel('Accuracy', fontsize=12, fontweight='bold')
+    for label in axs.get_yticklabels() + axs.get_xticklabels() + axs2.get_yticklabels():
+        label.set_fontsize(12)
+        label.set_fontweight('bold')
+    axs.set_xlim(0, 150)
+    axs2.grid(False)
+    # generate a single legend for both axes:
+    lines, labels = axs.get_legend_handles_labels()
+    lines2, labels2 = axs2.get_legend_handles_labels()
+    axs2.legend(lines + lines2, labels + labels2, loc='best')
+    fig.tight_layout()
+    fig.patch.set_alpha(0.0)
+    plt.savefig(RESULTS_PATH + 'plots/baseline.png', facecolor=fig.get_facecolor(), edgecolor='none')
+    plt.close()
 
 def main() -> None:
     # create a folder to save the plots in the results folder
@@ -178,6 +209,9 @@ def main() -> None:
     plot_avg_accuracies(simulations)
     plot_accuracies(simulations)
 
+    ## ---   Baseline  --- ##
+    plot_baseline()
 
 if __name__ == '__main__':
     main()
+

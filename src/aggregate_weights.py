@@ -23,7 +23,7 @@ def main() -> None:
     printd("----------------------------")
 
     net_weights:    list[dict[str, th.Tensor]] = [th.load(f"{RESULTS_PATH}/weights_{i}.pt") for i in range(N_CENTERS)]
-    center_sizes:   list[int] = [sum(int(class_size*center_class_percent) for class_size, center_class_percent in zip(CLASS_SIZES, center_percents)) for center_percents in PERC]
+    center_sizes:   list[int] = [sum(int(class_size*center_class_percent) for class_size, center_class_percent in zip(CLASS_SIZES, center_percents)) for center_percents in th.t(PERC)]
     total:          int       = sum(center_sizes)
     center_weights: th.Tensor = (th.tensor(center_sizes, dtype=th.float) / total)
 

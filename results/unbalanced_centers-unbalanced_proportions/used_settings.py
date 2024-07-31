@@ -9,10 +9,10 @@ from torch import Tensor
 ## Neural Network settings
 ########
 
-BATCH_SIZE:    int   = 64
-N_EPOCHS:      int   = 50
-LEARNING_RATE: float = 1e-5
-WEIGHT_DECAY:  float = 1e-4
+BATCH_SIZE:     int   = 64
+N_EPOCHS:       int   = 50
+LEARNING_RATE:  float = 1e-5
+WEIGHT_DECAY:   float = 1e-4
 TRAIN_SIZE:     float = 0.7
 VAL_SIZE:       float = 0.15
 TEST_SIZE:      float = 0.15
@@ -22,16 +22,16 @@ TEST_SIZE:      float = 0.15
 ########
 
 DATA_PATH:    str  = './data'
-RESULTS_PATH: str  = './results/unbalanced-centers-unbalanced_proportions'
+RESULTS_PATH: str  = './results/unbalances_centers-unbalanced_proportions'
 AUGMENT_DATA: bool = True
 
 # To generate the initial Dataset:
 DOWNLOAD_URL:    str = "https://www.kaggle.com/api/v1/datasets/download/masoudnickparvar/brain-tumor-mri-dataset?datasetVersionNumber=1"
-ALL_DATA:         str = DATA_PATH + '/BrainCancerDataset.pt'
+ALL_DATA:        str = DATA_PATH + '/BrainCancerDataset.pt'
 ZIP_FILE:        str = DATA_PATH + '/BrainCancer.zip'
 EXTRACT_DIR:     str = DATA_PATH + '/BrainCancerRawData/'
 FILE_EXT:        str = '.jpg'
-PIC_SQUARE_SIZE: int = 512
+PIC_SIZE:        int = 512
 
 LABELS: dict[str, int] = {
     'notumor': 0,
@@ -92,3 +92,4 @@ def printd(*args, **kwargs) -> None:
     """
     if DEBUG:
         print(*args, **kwargs, flush=True)
+
